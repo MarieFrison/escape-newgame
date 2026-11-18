@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escape Game New Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Monde unique : salle d'arcade de nuit. Décor plein écran au centre, HUD en haut, inventaire en bas. */
+  --bg:#120f26; --panel:#1d1838; --panel2:#262048; --ink:#f2efff; --muted:#a9a1cf; --line:#3a3266;
+  --magenta:#ff3d7f; --cyan:#3de1ff; --yellow:#ffd23d; --green:#4dff8a; --red:#ff4757; --blue:#3d8bff;
+  --font-display:'Press Start 2P', 'Courier New', monospace;
+  --font-body:'Atkinson Hyperlegible', 'Segoe UI', Arial, sans-serif;
+  --font-screen:'VT323', 'Courier New', monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.45;display:flex;flex-direction:column;overflow:hidden}
+button{font:inherit}
+[hidden]{display:none !important}
+h1,h2,h3{text-wrap:balance}
+
+/* ---------- boutons ---------- */
+.btn{font-family:var(--font-display);font-size:10px;line-height:1.3;padding:9px 11px;background:#2d2656;color:var(--ink);border:2px solid #07060f;box-shadow:inset -3px -3px 0 rgba(0,0,0,.4),inset 3px 3px 0 rgba(255,255,255,.12);cursor:pointer;white-space:nowrap}
+.btn:hover{background:#3b3274}
+.btn:active{box-shadow:inset 3px 3px 0 rgba(0,0,0,.4)}
+.btn:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.btn.primary{background:var(--magenta);color:#1b0612}
+.btn.go{background:var(--green);color:#05210e}
+.btn.warn{background:var(--yellow);color:#241a00}
+.btn.sm{padding:6px 9px;font-size:10px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+
+/* ---------- écran titre ---------- */
+#title{flex:1;overflow:auto;padding:24px 16px;background:
+  radial-gradient(ellipse at 50% -10%, rgba(255,61,127,.28), transparent 60%),
+  repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 2px, transparent 2px 4px), var(--bg)}
+.t-wrap{max-width:980px;margin:0 auto;display:grid;gap:22px}
+.t-logo{text-align:center;padding-top:6px}
+.t-logo .brand{font-family:var(--font-display);font-size:clamp(26px,5vw,52px);color:var(--magenta);text-shadow:4px 4px 0 #07060f,-3px 0 0 var(--cyan);letter-spacing:2px}
+.t-logo .sub{font-family:var(--font-display);font-size:clamp(10px,1.6vw,14px);color:var(--yellow);margin-top:14px;line-height:1.8}
+.t-logo .tag{color:var(--muted);margin-top:8px}
+.t-card{background:var(--panel);border:3px solid #07060f;box-shadow:0 0 0 3px var(--line);padding:18px}
+.t-card h2{font-family:var(--font-display);font-size:12px;color:var(--cyan);margin:0 0 14px}
+.t-row{display:flex;gap:14px;flex-wrap:wrap}
+.t-row label{flex:1;min-width:180px;display:grid;gap:6px;font-weight:700}
+input.txt,input.num,select,textarea{font:inherit;color:#1b1630;background:#f6f4ff;border:3px solid #07060f;padding:7px 9px;border-radius:0}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.mode{position:relative;text-align:left;background:var(--panel2);color:var(--ink);border:3px solid #07060f;box-shadow:0 0 0 3px var(--line);padding:16px;cursor:pointer;display:grid;gap:8px;font-family:var(--font-body)}
+.mode .mname{font-family:var(--font-display);font-size:15px}
+.mode .mtag{font-family:var(--font-display);font-size:9px;color:var(--muted)}
+.mode .mdesc{font-size:15px;color:#d9d4f3}
+.mode .bars{display:flex;gap:4px}
+.mode .bars i{width:18px;height:10px;background:#3a3266;display:block}
+.mode.easy .mname{color:var(--green)} .mode.easy .bars i:nth-child(-n+1){background:var(--green)}
+.mode.normal .mname{color:var(--yellow)} .mode.normal .bars i:nth-child(-n+2){background:var(--yellow)}
+.mode.hardcore .mname{color:var(--magenta)} .mode.hardcore .bars i:nth-child(-n+3){background:var(--magenta)}
+.mode[aria-pressed="true"]{box-shadow:0 0 0 3px var(--yellow),0 0 24px rgba(255,210,61,.35);transform:translateY(-2px)}
+.t-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.t-actions .btn{font-size:12px;padding:14px 18px}
+.t-foot{text-align:center;color:var(--muted);font-size:13px}
+.resume{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+
+/* ---------- histoire ---------- */
+#story{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+.story-box{max-width:780px;background:#07060f;border:4px solid var(--cyan);box-shadow:0 0 0 4px #07060f,0 0 40px rgba(61,225,255,.25);padding:26px;font-family:var(--font-screen);font-size:25px;line-height:1.25;color:#e8fbff}
+.story-box p{margin:0 0 14px}
+.story-box .date{font-family:var(--font-display);font-size:12px;color:var(--yellow)}
+.story-box .btns{display:flex;justify-content:flex-end;margin-top:10px}
+
+/* ---------- HUD ---------- */
+#game{flex:1;display:flex;flex-direction:column;min-height:0}
+#hud{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;background:var(--panel);border-bottom:3px solid #07060f;box-shadow:0 3px 0 var(--line)}
+.logo{font-family:var(--font-display);font-size:11px;color:var(--magenta);text-shadow:2px 2px 0 #000;line-height:1.5}
+.logo b{color:var(--cyan);font-weight:400}
+.pips{display:flex;gap:4px}
+.pip{font-family:var(--font-display);font-size:9px;padding:6px 7px;background:#151130;color:#5c5590;border:2px solid #07060f;cursor:not-allowed}
+.pip.open{color:var(--ink);cursor:pointer;background:#2d2656}
+.pip.done{color:#05210e;background:var(--green)}
+.pip.here{box-shadow:0 0 0 2px var(--yellow)}
+.hud-right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#timer{font-family:var(--font-display);font-size:17px;color:var(--yellow);padding:7px 10px;background:#07060f;border:2px solid var(--line);font-variant-numeric:tabular-nums;position:relative;min-width:128px;text-align:center}
+#timer.low{color:var(--magenta);animation:blink 1s steps(2) infinite}
+#timer .pen{position:absolute;right:0;top:100%;font-size:11px;color:var(--red);animation:rise 1.4s forwards;pointer-events:none}
+#timer.paused::after{content:'PAUSE';position:absolute;left:0;right:0;top:100%;font-size:8px;color:var(--cyan)}
+.xp{font-family:var(--font-display);font-size:10px;color:var(--green)}
+.badge{font-family:var(--font-display);font-size:9px;padding:6px 8px;border:2px solid #07060f}
+.badge.easy{background:var(--green);color:#05210e}.badge.normal{background:var(--yellow);color:#241a00}.badge.hardcore{background:var(--magenta);color:#1b0612}
+@keyframes blink{50%{opacity:.35}}
+@keyframes rise{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(16px)}}
+
+/* ---------- scène ---------- */
+#stage{flex:1;display:flex;align-items:center;justify-content:center;padding:10px 12px 4px;min-height:0;position:relative}
+#scene{width:min(100%, calc((100dvh - 200px) * 1.7778));aspect-ratio:16/9;border:4px solid #07060f;box-shadow:0 0 0 3px var(--line),0 18px 60px rgba(0,0,0,.6);position:relative;background:#000;overflow:hidden}
+#scene svg{display:block;width:100%;height:100%;cursor:crosshair;user-select:none}
+.room-title{position:absolute;left:10px;top:8px;font-family:var(--font-display);font-size:10px;background:rgba(7,6,15,.8);color:var(--yellow);padding:6px 8px;pointer-events:none}
+.hs{fill:transparent;stroke:transparent}
+body.lv-normal .hs{cursor:pointer}
+body.lv-easy .hs{cursor:pointer;stroke-width:3;stroke-dasharray:8 6;animation:glint 3.2s ease-in-out infinite}
+body.lv-easy .hs:hover{fill:rgba(255,210,61,.16);stroke:var(--yellow);animation:none}
+body.using .hs, body.using #scene svg{cursor:copy}
+@keyframes glint{0%,100%{stroke:rgba(255,210,61,0)}50%{stroke:rgba(255,210,61,.55)}}
+@media (prefers-reduced-motion: reduce){body.lv-easy .hs{animation:none;stroke:rgba(255,210,61,.35)} #timer.low{animation:none} .shake{animation:none !important}}
+#tip{position:fixed;pointer-events:none;background:#07060f;color:var(--yellow);font-family:var(--font-display);font-size:9px;padding:6px 8px;border:2px solid var(--yellow);z-index:40;white-space:nowrap}
+
+/* ---------- boîte de dialogue ---------- */
+#dlg{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:min(780px,94%);display:flex;gap:12px;align-items:flex-start;background:#07060f;border:3px solid var(--cyan);box-shadow:0 0 0 3px #07060f,0 8px 30px rgba(0,0,0,.6);padding:10px 14px;z-index:20;pointer-events:none;opacity:.96}
+#dlg.glitch{border-color:var(--magenta)} #dlg.ok{border-color:var(--green)} #dlg.warn{border-color:var(--yellow)}
+#dlg .av{flex:0 0 46px;height:46px}
+#dlg .who{font-family:var(--font-display);font-size:9px;color:var(--cyan);margin-bottom:4px}
+#dlg.glitch .who{color:var(--magenta)} #dlg.ok .who{color:var(--green)} #dlg.warn .who{color:var(--yellow)}
+#dlg .txt{font-family:var(--font-screen);font-size:23px;line-height:1.15;color:#eefbff}
+
+/* ---------- inventaire ---------- */
+#invbar{display:flex;align-items:center;gap:10px;padding:6px 14px 10px;justify-content:center;flex-wrap:wrap}
+#invbar .lbl{font-family:var(--font-display);font-size:9px;color:var(--muted)}
+.slots{display:flex;gap:6px}
+.slot{width:54px;height:54px;background:#07060f;border:3px solid var(--line);display:grid;place-items:center;cursor:pointer;padding:0}
+.slot.sel{border-color:var(--yellow);box-shadow:0 0 12px rgba(255,210,61,.6)}
+.slot.empty{cursor:default;opacity:.5}
+.slot svg{width:38px;height:38px}
+.frags{display:flex;gap:4px;align-items:center}
+.chip{display:inline-block;width:16px;height:16px;border:2px solid #07060f;vertical-align:-3px;margin:0 1px}
+.c-red{background:var(--red)}.c-blue{background:var(--blue)}.c-green{background:var(--green)}.c-black{background:#0a0a0a;border-color:#e9e5ff}
+.fragchip{font-family:var(--font-display);font-size:10px;display:inline-flex;gap:4px;align-items:center;background:#07060f;padding:4px 6px;border:2px solid var(--line)}
+
+/* ---------- fenêtres ---------- */
+#overlays{position:fixed;inset:0;pointer-events:none;z-index:30}
+.ov{position:absolute;inset:0;background:rgba(5,3,14,.78);display:flex;align-items:center;justify-content:center;padding:16px;pointer-events:auto}
+.win{width:min(860px,100%);max-height:100%;overflow:auto;background:var(--panel);border:4px solid #07060f;box-shadow:0 0 0 3px var(--line),0 20px 60px rgba(0,0,0,.6)}
+.win.wide{width:min(1000px,100%)}
+.win.narrow{width:min(520px,100%)}
+.win-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;background:#07060f;padding:10px 12px;border-bottom:3px solid var(--line)}
+.win-bar h2{font-family:var(--font-display);font-size:11px;margin:0;color:var(--yellow);line-height:1.5;flex:1}
+.win-bar .comp{font-size:12px;color:var(--muted);font-family:var(--font-body)}
+.win-body{padding:16px 18px 20px;display:grid;gap:14px}
+.win-body p{margin:0}
+.x{background:var(--magenta);color:#1b0612;border:2px solid #07060f;font-family:var(--font-display);font-size:10px;padding:6px 8px;cursor:pointer}
+
+/* documents papier */
+.paper{background:#f6f2e4;color:#1b1630;padding:16px 18px;border:3px solid #07060f;box-shadow:6px 6px 0 rgba(0,0,0,.35);font-size:16px}
+.paper h3{margin:0 0 8px;font-size:18px}
+.paper .meta{font-size:14px;color:#4b4565;margin-bottom:10px}
+table.doc{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+table.doc th,table.doc td{border:2px solid #1b1630;padding:5px 8px;text-align:left}
+table.doc th{background:#e2dcc6}
+.screen{background:#071a2a;color:#9ff3ff;font-family:var(--font-screen);font-size:22px;line-height:1.2;padding:16px;border:4px solid #1d3d55;box-shadow:inset 0 0 30px rgba(61,225,255,.15)}
+.screen b{color:var(--yellow);font-weight:400}
+.note{background:var(--yellow);color:#241a00;padding:14px 16px;border:3px solid #07060f;transform:rotate(-1deg);font-family:var(--font-screen);font-size:25px;line-height:1.15;max-width:520px;justify-self:center}
+
+/* énigmes */
+.pz-intro{color:#e7e3fb}
+.tbl-wrap{overflow-x:auto}
+.pz-table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;background:#f6f4ff;color:#1b1630}
+.pz-table th,.pz-table td{border:2px solid #07060f;padding:6px 8px;text-align:left;vertical-align:middle}
+.pz-table th{background:#d9d3f3;font-size:14px}
+.pz-table input.num{width:110px}
+.pz-table select{max-width:100%}
+.pz-field{display:grid;gap:6px;background:var(--panel2);padding:10px 12px;border:2px solid #07060f}
+.pz-label{font-weight:700}
+.radios,.checks{display:grid;gap:6px}
+.radio{display:flex;gap:8px;align-items:flex-start;background:#f6f4ff;color:#1b1630;padding:7px 10px;border:2px solid #07060f;cursor:pointer}
+.radio input{margin-top:4px;accent-color:var(--magenta);width:18px;height:18px;flex:0 0 auto}
+.is-wrong{outline:3px solid var(--red) !important;outline-offset:1px}
+.is-ok{outline:3px solid var(--green) !important;outline-offset:1px}
+.locked-field{font-size:14px;color:#8b2341;font-weight:700}
+.pz-hints{display:grid;gap:8px}
+.pz-hints .hint{background:#2b2400;border:2px solid var(--yellow);color:#fff6c9;padding:8px 10px}
+.pz-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;border-top:2px dashed var(--line);padding-top:12px}
+.pz-msg{flex:1;min-width:160px;font-weight:700}
+.pz-msg.bad{color:var(--red)} .pz-msg.good{color:var(--green)}
+.solved-banner{background:#0d2b18;border:3px solid var(--green);color:#cfffe0;padding:10px 12px;font-weight:700}
+.shake{animation:shake .35s}
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+
+/* étiquettes */
+.label-card{background:#ffe680;color:#1b1630;border:3px solid #07060f;padding:14px 16px;max-width:420px;justify-self:center;width:100%;box-shadow:6px 6px 0 rgba(0,0,0,.35)}
+.label-card .ln{font-weight:700;font-size:18px}
+.label-card .lp{font-family:var(--font-display);font-size:22px;margin:10px 0 6px}
+.label-card .lo{text-decoration:line-through;color:#6b5a2a}
+.label-card .promo{display:inline-block;background:var(--magenta);color:#fff;font-family:var(--font-display);font-size:11px;padding:4px 6px}
+.label-card small{display:block;color:#5a4c1d}
+.sticker{justify-self:center;background:#fff;color:#1b1630;border:2px dashed #07060f;padding:8px 12px;font-weight:700}
+
+/* cadenas */
+.lock{display:grid;gap:16px;justify-items:center;text-align:center}
+.lock .slots-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.lock .digit{display:grid;gap:6px;justify-items:center}
+.lock .digit .chip{width:34px;height:34px}
+.lock .digit input{width:56px;height:64px;text-align:center;font-family:var(--font-display);font-size:22px;color:#1b1630;background:#f6f4ff;border:3px solid #07060f}
+.lock .digit small{font-family:var(--font-display);font-size:8px;color:var(--muted)}
+
+/* colis, sacs, comptage */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.card{background:#e9c48f;color:#2a1a08;border:3px solid #07060f;padding:12px;box-shadow:5px 5px 0 rgba(0,0,0,.35);display:grid;gap:6px}
+.card.bad{background:#c9895a}
+.card .ref{font-family:var(--font-display);font-size:10px}
+.card .q{font-family:var(--font-display);font-size:16px}
+.bag{background:#f6f4ff;color:#1b1630}
+
+/* panier-lot */
+.lot-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px}
+.lot-item{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#f6f4ff;color:#1b1630;padding:8px 10px;border:2px solid #07060f}
+.lot-item small{display:block;color:#5d5680}
+.qty{display:flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:12px}
+.qty span{min-width:20px;text-align:center}
+.lot-side{display:grid;gap:8px}
+.lot-total{font-family:var(--font-display);font-size:13px;color:var(--yellow)}
+.rules{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.rules li{padding:6px 10px;border:2px solid #07060f;background:#3a1626;color:#ffd6e2}
+.rules li.ok{background:#0d2b18;color:#cfffe0}
+.rules li::before{content:'✗ ';font-weight:700}.rules li.ok::before{content:'✓ '}
+
+/* boss */
+.boss{display:grid;gap:14px}
+.boss-top{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.boss-sprite{width:130px;height:130px;flex:0 0 auto}
+.boss-sprite.hit{animation:shake .35s;filter:brightness(2)}
+.boss-bars{flex:1;min-width:220px;display:grid;gap:6px}
+.boss-bars .lbl{font-family:var(--font-display);font-size:9px;color:var(--muted)}
+.hpbar{height:22px;background:#07060f;border:3px solid #07060f;box-shadow:0 0 0 2px var(--line)}
+.hpbar div{height:100%;background:linear-gradient(90deg,var(--magenta),#ff8db1);transition:width .4s}
+.hearts{font-size:22px;letter-spacing:4px;color:var(--red)}
+.qtimer{font-family:var(--font-display);font-size:11px;color:var(--yellow)}
+.boss-q{background:#07060f;border:3px solid var(--cyan);padding:14px;font-family:var(--font-screen);font-size:26px;line-height:1.15;color:#e8fbff}
+.boss-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.boss-opts .btn{font-size:11px;padding:14px 10px;white-space:normal}
+.boss-msg{color:var(--muted);min-height:1.4em}
+
+/* plein écran : level clear, game over, victoire */
+.big{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;pointer-events:auto;background:rgba(5,3,14,.9)}
+.big-box{text-align:center;display:grid;gap:16px;justify-items:center;max-width:900px;max-height:100%;overflow:auto;padding:10px}
+.big-title{font-family:var(--font-display);font-size:clamp(22px,5vw,46px);line-height:1.3;text-shadow:4px 4px 0 #07060f}
+.big-title.clear{color:var(--green)} .big-title.over{color:var(--magenta)} .big-title.win{color:var(--yellow)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;width:100%}
+.stat{background:var(--panel);border:3px solid #07060f;box-shadow:0 0 0 2px var(--line);padding:10px}
+.stat .v{font-family:var(--font-display);font-size:16px;color:var(--cyan);font-variant-numeric:tabular-nums}
+.stat .k{font-size:13px;color:var(--muted)}
+.selfeval{width:100%;text-align:left}
+.selfeval table{width:100%;border-collapse:collapse;background:#f6f4ff;color:#1b1630}
+.selfeval th,.selfeval td{border:2px solid #07060f;padding:6px 8px;font-size:15px}
+.selfeval td.c{text-align:center}
+.selfeval input{width:18px;height:18px;accent-color:var(--magenta)}
+
+/* espace prof */
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs .btn[aria-selected="true"]{background:var(--cyan);color:#04222a}
+.dash{overflow:auto}
+.dash table{border-collapse:collapse;width:100%;background:#f6f4ff;color:#1b1630;font-size:14px;font-variant-numeric:tabular-nums}
+.dash th,.dash td{border:2px solid #07060f;padding:5px 7px;text-align:left;white-space:nowrap}
+.dash th{background:#d9d3f3}
+.key{background:#f6f4ff;color:#1b1630;padding:12px 14px;border:2px solid #07060f}
+.key h3{margin:0 0 6px;font-size:16px}
+.key ul{margin:0;padding-left:20px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.muted{color:var(--muted)}
+.disclaimer{font-size:12px;color:#7d76a8;text-align:center}
+
+/* étincelles de clic */
+.spark{position:fixed;width:0;height:0;pointer-events:none;z-index:45}
+.spark i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;background:#a9a1cf;animation:sp .42s steps(5) forwards}
+.spark.hit i{background:var(--yellow)}
+.spark i:nth-child(1){--dx:-18px;--dy:0}.spark i:nth-child(2){--dx:18px;--dy:0}.spark i:nth-child(3){--dx:0;--dy:-18px}.spark i:nth-child(4){--dx:0;--dy:18px}
+.spark i:nth-child(5){--dx:-13px;--dy:-13px}.spark i:nth-child(6){--dx:13px;--dy:-13px}.spark i:nth-child(7){--dx:-13px;--dy:13px}.spark i:nth-child(8){--dx:13px;--dy:13px}
+@keyframes sp{to{transform:translate(var(--dx),var(--dy));opacity:0}}
+</style>
+</head>
+<body>
+
+<!-- ÉCRAN TITRE -->
+<section id="title">
+  <div class="t-wrap">
+    <div class="t-logo">
+      <div class="brand">NEW GAME</div>
+      <div class="sub">ESCAPE GAME · LE GLITCH DE NOËL</div>
+      <div class="tag">1CAP EPC · 5 niveaux + 1 boss · 2 heures pour sauver le magasin</div>
+    </div>
+
+    <div class="t-card resume" id="resumeCard" hidden>
+      <div><b>Partie en cours sur cet ordinateur :</b> <span id="resumeInfo"></span></div>
+      <button class="btn go" id="btnResume">CONTINUER ▶</button>
+    </div>
+
+    <div class="t-card">
+      <h2>1 · JOUEURS</h2>
+      <div class="t-row">
+        <label for="p1">Joueur 1 (prénom)<input class="txt" id="p1" maxlength="30" autocomplete="off" placeholder="Prénom"></label>
+        <label for="p2">Joueur 2 (si binôme)<input class="txt" id="p2" maxlength="30" autocomplete="off" placeholder="Facultatif"></label>
+        <label for="cl">Classe<input class="txt" id="cl" maxlength="30" autocomplete="off" value="1CAP EPC"></label>
+      </div>
+    </div>
+
+    <div class="t-card">
+      <h2>2 · CHOISIS TA DIFFICULTÉ</h2>
+      <div class="modes" id="modes"></div>
+    </div>
+
+    <div class="t-actions">
+      <button class="btn primary" id="btnStart">▶ PRESS START</button>
+      <button class="btn" id="btnLoad">📂 CHARGER UNE SAUVEGARDE</button>
+      <button class="btn" id="btnTeacherT">⚙ ESPACE PROFESSEUR</button>
+      <input type="file" id="fileLoad" accept=".json,application/json" hidden>
+    </div>
+    <p class="disclaimer">Jeu pédagogique fictif conçu pour la classe. Les produits, personnages et situations sont inventés ; le jeu n’est pas affilié à l’enseigne New Game.</p>
+  </div>
+</section>
+
+<!-- HISTOIRE -->
+<section id="story" hidden>
+  <div class="story-box">
+    <p class="date">SAMEDI 19 DÉCEMBRE 2026 · 7 H 58</p>
+    <div id="storyText"></div>
+    <div class="btns"><button class="btn primary" id="btnGo">ENTRER DANS LE JEU ▶</button></div>
+  </div>
+</section>
+
+<!-- JEU -->
+<section id="game" hidden>
+  <header id="hud">
+    <div class="logo">NEW GAME<br><b>ESCAPE</b></div>
+    <nav class="pips" id="pips" aria-label="Niveaux"></nav>
+    <div class="hud-right">
+      <span class="badge" id="lvBadge"></span>
+      <span class="xp" id="xp">XP 0</span>
+      <div id="timer" aria-live="off">2:00:00</div>
+      <button class="btn" id="btnCarnet">📒 CARNET</button>
+      <button class="btn warn" id="btnHint">💡 INDICE</button>
+      <button class="btn go" id="btnSave">💾 SAUVEGARDER</button>
+      <button class="btn" id="btnSound" aria-label="Son">🔊</button>
+      <button class="btn" id="btnTeacher" aria-label="Espace professeur">⚙</button>
+    </div>
+  </header>
+  <div id="stage">
+    <div id="scene"></div>
+    <div id="dlg" hidden><div class="av" id="dlgAv"></div><div><div class="who" id="dlgWho"></div><div class="txt" id="dlgTxt"></div></div></div>
+  </div>
+  <div id="invbar">
+    <span class="lbl">INVENTAIRE</span><div class="slots" id="slots"></div>
+    <span class="lbl">FRAGMENTS</span><div class="frags" id="frags"></div>
+  </div>
+</section>
+
+<div id="overlays"></div>
+<div id="tip" hidden></div>
+
+<script>
+'use strict';
+/* =========================================================
+   ESCAPE GAME NEW GAME — LE GLITCH DE NOËL (1CAP EPC)
+   Code professeur : modifiable ci-dessous.
+   ========================================================= */
+const TEACHER_CODE = 'NEWGAME54';
+const TOTAL_TIME = 7200; // 2 heures
+const SAVE_KEY = 'newgame-escape-v1';
+
+const LEVELS = {
+  easy:     {name:'EASY',     tag:'Mode découverte', desc:'Les objets à fouiller brillent et leur nom s’affiche au survol. Indices gratuits, pas de pénalité. Les réponses fausses sont surlignées.', hintCost:0,   wrongCost:0,  bossOptions:3, bossTimer:0},
+  normal:   {name:'NORMAL',   tag:'Mode joueur',     desc:'Le curseur change sur les objets à fouiller. Un indice coûte 2 minutes, une erreur 30 secondes. Le jeu te dit combien de réponses sont fausses.', hintCost:120, wrongCost:30, bossOptions:4, bossTimer:0},
+  hardcore: {name:'HARDCORE', tag:'Mode expert',     desc:'Aucune aide visuelle : fouille tout le décor à la souris. Un indice coûte 5 minutes, une erreur 1 minute. Calculs sans aide et boss chronométré.', hintCost:300, wrongCost:60, bossOptions:4, bossTimer:20}
+};
+const L = () => LEVELS[S.level] || LEVELS.easy;
+
+function newState(){
+  return {app:'newgame-escape', version:1, players:['',''], classe:'1CAP EPC', level:'easy',
+    timeLeft:TOTAL_TIME, realTime:0, started:false, startedAt:null, savedAt:null, paused:false,
+    room:0, unlocked:[0], cleared:[], solved:{}, tries:{}, hints:{}, drafts:{}, seen:{},
+    items:[], usedItems:{}, frag:{}, dangers:[], xp:0,
+    boss:{hp:100, hearts:3, done:false, queue:[]}, finished:false, gameOver:false, selfEval:{}, log:[]};
+}
+let S = newState();
+let SEL = null; // objet sélectionné dans l'inventaire
+
+/* ---------- utilitaires ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+const COLORNAME = {red:'rouge', blue:'bleu', green:'vert', black:'noir'};
+const CH = c => `<span class="chip c-${c}" title="Fragment ${COLORNAME[c]}"></span>`;
+const fmt = s => String(s).replace(/\[\[(red|blue|green|black)\]\]/g, (m,c) => CH(c));
+const eur = n => n.toFixed(2).replace('.', ',') + ' €';
+function fmtTime(t){ t = Math.max(0, Math.round(t)); const h = Math.floor(t/3600), m = Math.floor(t%3600/60), s = t%60; return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; }
+function fmtMin(t){ const m = Math.floor(t/60), s = t%60; return s ? `${m} min ${s} s` : `${m} min`; }
+function log(ev){ S.log.push({t: TOTAL_TIME - S.timeLeft, ev}); if (S.log.length > 400) S.log.shift(); }
+function shuffle(a){ a = a.slice(); for (let i = a.length-1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
+
+/* ---------- sons 8 bits ---------- */
+let AC = null, muted = false;
+function beep(f, d=.08, type='square', vol=.045, when=0){
+  if (muted) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime + when;
+    o.type = type; o.frequency.value = f; o.connect(g); g.connect(AC.destination);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.start(t); o.stop(t + d + .03);
+  } catch(e){}
+}
+const SFX = {
+  click: () => beep(700, .03),
+  ok:    () => [523,659,784,1046].forEach((f,i) => beep(f,.11,'square',.045,i*.08)),
+  bad:   () => { beep(190,.18,'sawtooth',.05); beep(120,.28,'sawtooth',.05,.13); },
+  item:  () => [880,1320].forEach((f,i) => beep(f,.09,'square',.045,i*.07)),
+  door:  () => [392,523,659,784,1046,1318].forEach((f,i) => beep(f,.13,'square',.045,i*.09)),
+  hit:   () => { beep(300,.06,'square',.05); beep(150,.12,'sawtooth',.05,.05); },
+  nope:  () => beep(240,.06,'triangle',.04)
+};
+
+/* ---------- sprites ---------- */
+function glitchSVG(size=46){
+  return `<svg viewBox="0 0 16 16" width="${size}" height="${size}" shape-rendering="crispEdges" aria-hidden="true">
+  <rect x="4" y="1" width="8" height="1" fill="#ff3d7f"/><rect x="2" y="2" width="12" height="1" fill="#ff3d7f"/>
+  <rect x="1" y="3" width="14" height="9" fill="#ff3d7f"/><rect x="0" y="5" width="1" height="5" fill="#ff3d7f"/><rect x="15" y="5" width="1" height="5" fill="#ff3d7f"/>
+  <rect x="1" y="12" width="2" height="2" fill="#ff3d7f"/><rect x="5" y="12" width="2" height="3" fill="#ff3d7f"/><rect x="9" y="12" width="2" height="2" fill="#ff3d7f"/><rect x="13" y="12" width="2" height="3" fill="#ff3d7f"/>
+  <rect x="3" y="5" width="3" height="3" fill="#fff"/><rect x="10" y="5" width="3" height="3" fill="#fff"/>
+  <rect x="4" y="6" width="2" height="2" fill="#07060f"/><rect x="10" y="6" width="2" height="2" fill="#07060f"/>
+  <rect x="4" y="9" width="8" height="1" fill="#07060f"/><rect x="5" y="10" width="1" height="1" fill="#fff"/><rect x="8" y="10" width="1" height="1" fill="#fff"/>
+  <rect x="0" y="4" width="3" height="1" fill="#3de1ff"/><rect x="12" y="10" width="4" height="1" fill="#3de1ff"/></svg>`;
+}
+function sarahSVG(size=46){
+  return `<svg viewBox="0 0 16 16" width="${size}" height="${size}" shape-rendering="crispEdges" aria-hidden="true">
+  <rect x="4" y="1" width="8" height="3" fill="#6b3a1e"/><rect x="3" y="3" width="10" height="2" fill="#6b3a1e"/>
+  <rect x="4" y="4" width="8" height="6" fill="#f2c39b"/><rect x="3" y="4" width="1" height="7" fill="#6b3a1e"/><rect x="12" y="4" width="1" height="7" fill="#6b3a1e"/>
+  <rect x="5" y="6" width="2" height="1" fill="#07060f"/><rect x="9" y="6" width="2" height="1" fill="#07060f"/><rect x="6" y="8" width="4" height="1" fill="#c0545c"/>
+  <rect x="3" y="11" width="10" height="5" fill="#4dff8a"/><rect x="7" y="11" width="2" height="2" fill="#07060f"/></svg>`;
+}
+function infoSVG(size=46){
+  return `<svg viewBox="0 0 16 16" width="${size}" height="${size}" shape-rendering="crispEdges" aria-hidden="true">
+  <rect x="1" y="3" width="14" height="10" fill="#3de1ff"/><rect x="2" y="4" width="12" height="8" fill="#07060f"/>
+  <rect x="7" y="5" width="2" height="2" fill="#ffd23d"/><rect x="7" y="8" width="2" height="3" fill="#ffd23d"/></svg>`;
+}
+const ITEMS = {
+  cutter: {name:'Cutter', svg:`<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="8" width="9" height="4" fill="#ffd23d"/><rect x="2" y="8" width="9" height="1" fill="#fff3a8"/><rect x="11" y="8" width="3" height="2" fill="#cfd6ff"/><rect x="13" y="8" width="2" height="1" fill="#fff"/><rect x="4" y="9" width="2" height="2" fill="#07060f"/></svg>`},
+  uv:     {name:'Lampe UV', svg:`<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="6" width="8" height="4" fill="#4c5375"/><rect x="10" y="5" width="3" height="6" fill="#7d86a8"/><rect x="13" y="4" width="2" height="8" fill="#b06bff"/><rect x="4" y="7" width="2" height="2" fill="#ff3d7f"/></svg>`}
+};
+
+/* =========================================================
+   DÉCORS (SVG 960 × 540, style pixel)
+   ========================================================= */
+const O = '#0d0a1f';
+const r  = (x,y,w,h,f,o='') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}" stroke="${O}" stroke-width="3" ${o}/>`;
+const rn = (x,y,w,h,f,o='') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}" ${o}/>`;
+const tx = (x,y,s,size=10,f='#fff',a='middle',font="'Press Start 2P',monospace") => `<text x="${x}" y="${y}" font-family="${font}" font-size="${size}" fill="${f}" text-anchor="${a}">${s}</text>`;
+const CHIPCOL = {red:'#ff4757', blue:'#3d8bff', green:'#4dff8a', black:'#0a0a0a'};
+const chipsRow = (x,y,order,size=18,gap=6) => order.map((c,i) => r(x + i*(size+gap), y, size, size, CHIPCOL[c], c==='black' ? 'stroke="#e9e5ff"' : '')).join('');
+function wall(c1,c2){ let s = rn(0,0,960,380,c1); for (let x=0; x<960; x+=64) s += rn(x,0,2,380,c2); return s + rn(0,372,960,8,O); }
+function floorTiles(c1,c2){ let s = rn(0,380,960,160,c1); for (let y=420; y<540; y+=40) s += rn(0,y,960,3,c2); for (let x=0; x<960; x+=80) s += rn(x,380,3,160,c2); return s; }
+
+function art1(){ // RÉSERVE
+  let s = wall('#2b2450','#261f49') + floorTiles('#3a2f5c','#30264f');
+  s += r(440,0,80,14,'#7d86a8') + `<polygon points="450,14 510,14 610,380 350,380" fill="#ffe9a8" opacity=".06"/>`;
+  // affiche sécurité
+  s += r(360,60,100,110,'#ffd23d') + `<polygon points="410,72 434,112 386,112" fill="${O}"/>` + tx(410,107,'!',14,'#ffd23d') + tx(410,134,'SÉCURITÉ',8,O) + rn(374,144,72,4,O) + rn(374,154,58,4,O);
+  // horloge 7 h 58
+  s += `<circle cx="545" cy="80" r="22" fill="#f4f1e6" stroke="${O}" stroke-width="3"/><line x1="545" y1="80" x2="544" y2="62" stroke="${O}" stroke-width="3"/><line x1="545" y1="80" x2="533" y2="87" stroke="${O}" stroke-width="4"/>`;
+  // porte-bloc
+  s += r(632,118,44,62,'#5e3c27') + rn(637,128,34,46,'#f4f1e6') + r(644,112,20,10,'#7d86a8') + rn(641,136,26,3,'#888') + rn(641,144,22,3,'#888') + rn(641,152,26,3,'#888') + rn(641,160,18,3,'#888');
+  // étagère
+  s += r(40,90,12,292,'#7d86a8') + r(288,90,12,292,'#7d86a8');
+  for (const y of [150,250,350]) s += r(40,y,260,10,'#4c5375');
+  s += r(60,110,60,40,'#c98d4b') + r(126,118,50,32,'#b77a3d');
+  s += r(60,205,70,45,'#c98d4b') + r(136,215,40,35,'#d9a35f') + r(182,200,90,50,'#b77a3d');
+  s += r(60,300,90,50,'#9c6a33') + r(158,310,60,40,'#c98d4b') + r(224,296,56,54,'#b77a3d');
+  s += r(225,92,118,58,'#9c6a33') + tx(284,126,'14 KG',9,O); // carton lourd qui dépasse
+  // poubelle
+  s += r(312,336,36,48,'#4c5375') + `<circle cx="322" cy="332" r="7" fill="#f4f1e6" stroke="${O}" stroke-width="2"/><circle cx="337" cy="330" r="6" fill="#e9e3cf" stroke="${O}" stroke-width="2"/>`;
+  // palette et colis
+  s += r(368,400,224,20,'#8a5a3b') + rn(380,406,30,8,'#5e3c27') + rn(465,406,30,8,'#5e3c27') + rn(550,406,30,8,'#5e3c27');
+  s += r(375,322,72,78,'#c98d4b') + r(452,322,70,78,'#d9a35f');
+  s += `<polygon points="527,400 527,345 545,332 586,338 588,400" fill="#9c6a33" stroke="${O}" stroke-width="3"/><polyline points="532,360 548,372 540,384 556,392" fill="none" stroke="${O}" stroke-width="2"/>`;
+  s += r(392,256,74,66,'#b77a3d') + r(472,266,62,56,'#c98d4b');
+  if (!S.usedItems.cutter) s += `<rect x="370" y="252" width="222" height="150" fill="#dff6ff" opacity=".18"/><line x1="372" y1="260" x2="590" y2="395" stroke="#dff6ff" stroke-width="2" opacity=".35"/>`;
+  s += r(456,342,40,28,'#f4f1e6') + rn(462,350,26,3,'#888') + rn(462,358,20,3,'#888');
+  // établi
+  s += r(606,250,150,14,'#8a5a3b') + r(612,264,10,118,'#5e3c27') + r(740,264,10,118,'#5e3c27') + r(626,268,68,28,'#5e3c27') + rn(652,280,16,4,'#ffd23d');
+  s += r(632,238,70,14,'#f4f1e6') + rn(638,243,40,3,'#888');
+  // extincteur masqué
+  s += r(768,252,30,30,'#e2464f') + tx(783,273,'F',10,'#fff') + r(772,292,24,58,'#e2464f') + r(778,284,12,10,'#333');
+  s += r(752,332,74,50,'#c98d4b') + r(764,302,52,32,'#b77a3d');
+  // porte
+  s += r(830,110,112,272,'#4b4f7a') + rn(842,180,88,54,'#3c4068') + rn(842,246,88,120,'#3c4068') + r(910,232,24,32,'#0b0918') + rn(915,238,14,6,'#ff3d7f') + tx(886,100,'SORTIE',8,'#4dff8a');
+  s += r(842,124,88,44,'#0b0918') + chipsRow(848,137,['green','red','black','blue'],16,5);
+  // flaque + canette
+  s += `<ellipse cx="640" cy="482" rx="62" ry="14" fill="#8e5cff" opacity=".55"/>` + r(668,468,12,18,'#3de1ff');
+  // transpalette dans l'allée
+  s += r(326,474,160,10,'#7d86a8') + r(326,490,160,8,'#7d86a8') + r(478,438,28,58,'#e2464f') + `<line x1="492" y1="438" x2="522" y2="440" stroke="${O}" stroke-width="6"/><line x1="520" y1="440" x2="520" y2="404" stroke="${O}" stroke-width="6"/><circle cx="340" cy="502" r="6" fill="#222"/><circle cx="470" cy="502" r="6" fill="#222"/>`;
+  return s;
+}
+
+function art2(){ // BUREAU
+  let s = wall('#1f2a48','#1b2542') + rn(0,380,960,160,'#5a3d2b');
+  for (let y=404; y<540; y+=28) s += rn(0,y,960,3,'#4a3122');
+  s += r(20,118,104,264,'#3a4a78') + rn(32,132,80,104,'#31406a') + rn(32,248,80,118,'#31406a') + r(100,236,20,30,'#0b0918') + rn(104,242,12,6,'#ff3d7f') + tx(72,108,'BOUTIQUE',8,'#3de1ff');
+  s += r(150,68,92,112,'#f4f1e6') + rn(152,70,88,20,'#e2464f') + tx(196,86,'DÉC.',8,'#fff');
+  for (let i=0;i<5;i++) for (let j=0;j<6;j++) s += rn(158+j*13, 98+i*15, 9, 9, (i===2&&j===4) ? '#ffd23d' : '#c9c3b0');
+  s += `<circle cx="300" cy="86" r="24" fill="#f4f1e6" stroke="${O}" stroke-width="3"/><line x1="300" y1="86" x2="300" y2="66" stroke="${O}" stroke-width="3"/><line x1="300" y1="86" x2="309" y2="100" stroke="${O}" stroke-width="4"/>`;
+  s += r(590,56,320,160,'#7d86a8') + rn(600,66,300,140,'#eef3ff') + tx(750,94,'NE PAS EFFACER',9,'#e2464f');
+  s += chipsRow(662,112,['red','green','black','blue'],32,14);
+  s += tx(750,182,'COMMANDE AVANT LE 24/12 !',8,'#1b1630');
+  s += r(270,290,400,18,'#8a5a3b') + r(282,308,376,74,'#5e3c27') + rn(300,326,120,40,'#4a3122') + rn(520,326,120,40,'#4a3122');
+  s += r(404,178,132,98,'#222') + rn(412,186,116,74, S.seen.login ? '#123a2a' : '#10304a') + tx(470,220, S.seen.login ? 'SESSION' : 'LOCKED',10, S.seen.login ? '#4dff8a' : '#ff3d7f') + tx(470,244,'GLITCH.EXE',7,'#3de1ff') + r(458,276,24,12,'#333');
+  s += r(404,282,128,10,'#7d86a8');
+  s += r(574,268,56,22,'#222') + r(580,260,44,10,'#333') + `<circle cx="620" cy="278" r="4" fill="#4dff8a"/>`;
+  s += r(330,266,22,24,'#3de1ff') + `<path d="M352 272 h6 v10 h-6" fill="none" stroke="${O}" stroke-width="3"/>`;
+  s += r(716,232,124,150,'#7d86a8') + r(728,244,100,36,'#8e97b8') + r(728,290,100,36,'#8e97b8') + r(728,336,100,36,'#8e97b8') + rn(766,258,24,6,O) + rn(766,304,24,6,O) + rn(766,350,24,6,O);
+  s += r(866,330,44,52,'#c2643b') + `<polygon points="888,330 862,270 884,300 888,250 896,300 916,268" fill="#3fbf6a" stroke="${O}" stroke-width="3"/>`;
+  return s;
+}
+
+function art3(){ // SURFACE DE VENTE
+  let s = wall('#26315c','#222c55') + rn(0,380,960,160,'#d7d3e8');
+  for (let x=0; x<960; x+=60) for (let y=380; y<540; y+=40) if (((x/60) + (y-380)/40) % 2 === 0) s += rn(x,y,60,40,'#c3bedb');
+  s += r(36,18,272,56,'#0b0918') + tx(174,57,'NEW GAME',20,'#3de1ff') + tx(172,55,'NEW GAME',20,'#ff3d7f');
+  // gondole jeux
+  s += r(40,120,292,264,'#4c5375') + rn(48,128,276,248,'#39406a');
+  for (let i=0;i<3;i++) s += r(62+i*24,214,20,30,'#222') + rn(66+i*24,222,4,4,'#ff3d7f') + rn(74+i*24,222,4,4,'#3de1ff');
+  for (let i=0;i<2;i++) s += r(184+i*34,206,28,38,'#ff3d7f') + rn(190+i*34,214,16,6,'#07060f');
+  s += r(262,200,24,44,'#3de1ff') + r(292,206,24,38,'#ffd23d');
+  for (let i=0;i<4;i++) s += r(60+i*18,290,16,44,'#3d8bff') + rn(63+i*18,296,10,6,'#ffd23d');
+  s += r(184,312,20,22,'#4dff8a') + r(210,312,20,22,'#4dff8a') + r(262,292,24,42,'#e2464f') + r(292,300,24,34,'#8e5cff');
+  for (const y of [245,335]) s += r(44,y,284,10,'#7d86a8');
+  for (const [x,y] of [[60,248],[180,248],[60,338],[180,338]]) s += r(x,y,70,14,'#ffd23d');
+  // frigo boissons
+  s += r(356,116,148,268,'#7d86a8') + `<rect x="366" y="126" width="128" height="230" fill="#3de1ff" opacity=".22"/>`;
+  const canc = ['#ffd23d','#e2464f','#4dff8a','#3d8bff'];
+  [140,200,260,320].forEach((y,k) => { for (let i=0;i<6;i++) s += rn(372+i*20, y, 12, 26, canc[(i+k)%4]); s += rn(366, y+28, 128, 3, '#cfd6ff'); });
+  s += rn(486,220,4,60,O);
+  // présentoir bonbons
+  s += r(520,238,124,146,'#ff3d7f') + tx(582,262,'BONBONS',8,'#fff');
+  const pc = ['#ffd23d','#4dff8a','#3de1ff','#ffffff'];
+  for (let i=0;i<4;i++) for (let j=0;j<2;j++) s += r(532+i*27, 276+j*40, 22, 32, pc[(i+j)%4]);
+  s += r(536,360,90,14,'#ffd23d');
+  // tête de gondole promo
+  s += r(660,150,142,234,'#4c5375') + r(668,152,126,40,'#ff3d7f') + tx(731,178,'PROMO -30%',9,'#fff');
+  for (let i=0;i<4;i++) for (let j=0;j<2;j++) s += r(674+i*30, 206+j*66, 24, 54, '#e2464f') + rn(678+i*30, 214+j*66, 16, 8, '#ffd23d');
+  s += r(690,352,82,14,'#ffd23d');
+  // affiche (message UV)
+  s += r(520,30,124,92,'#3d8bff') + tx(582,58,'STAR',10,'#ffd23d') + tx(582,76,'KNIGHTS VI',8,'#fff') + rn(560,84,44,26,'#2a5fbf');
+  if (S.usedItems.uv) s += rn(528,88,108,28,'#7b2cff','opacity=".85"') + r(548,93,18,18,'#0a0a0a','stroke="#e9e5ff"') + tx(604,108,'= 8',11,'#f0e0ff');
+  // comptoir
+  s += r(816,270,136,114,'#8a5a3b') + r(830,320,74,26,'#5e3c27') + rn(860,330,14,4,'#ffd23d');
+  s += r(846,236,62,34,'#222') + rn(852,242,50,12,'#4dff8a') + r(912,248,34,22,'#3d8bff');
+  // porte
+  s += r(828,40,118,190,'#4b4f7a') + tx(887,60,'CLICK',8,'#4dff8a') + tx(887,74,'& COLLECT',7,'#4dff8a') + r(926,140,16,26,'#0b0918') + rn(929,146,10,5,'#ff3d7f');
+  s += r(840,86,94,32,'#0b0918') + chipsRow(846,93,['black','blue','red','green'],16,6);
+  return s;
+}
+
+function art4(){ // CLICK & COLLECT
+  let s = wall('#2c2147','#281d42') + floorTiles('#3b2f55','#33284c');
+  s += r(30,88,392,36,'#4dff8a') + tx(226,112,'CLICK & COLLECT',12,'#0b0918');
+  s += r(30,130,392,256,'#7d86a8');
+  const bags = [[40,140,101,'#ff3d7f'],[230,140,102,'#3de1ff'],[40,266,103,'#ffd23d'],[230,266,104,'#8e5cff']];
+  for (const [x,y,n,c] of bags){
+    s += r(x,y,182,116,'#4c5375') + `<polygon points="${x+56},${y+40} ${x+126},${y+40} ${x+134},${y+110} ${x+48},${y+110}" fill="${c}" stroke="${O}" stroke-width="3"/>` + `<path d="M${x+72} ${y+40} Q ${x+91} ${y+14} ${x+110} ${y+40}" fill="none" stroke="${O}" stroke-width="4"/>` + r(x+70,y+62,42,18,'#f4f1e6') + tx(x+91,y+76,'#'+n,8,'#0b0918');
+  }
+  s += r(448,64,116,170,'#4b4f7a') + tx(506,56,'ANIMATION',8,'#ffd23d') + r(544,150,16,26,'#0b0918') + rn(547,156,10,5,'#ff3d7f');
+  s += r(458,78,96,30,'#0b0918') + chipsRow(463,85,['blue','red','green','black'],16,7);
+  s += r(440,262,262,122,'#8a5a3b') + rn(452,276,238,4,'#5e3c27');
+  s += r(470,198,92,62,'#222') + rn(477,205,78,44,'#10304a') + tx(516,226,'CMD',9,'#4dff8a') + tx(516,242,'C&C',8,'#3de1ff');
+  s += r(574,246,40,16,'#f4f1e6') + rn(578,250,30,3,'#e2464f');
+  s += r(622,240,40,22,'#e2464f') + rn(628,246,28,3,'#fff');
+  s += r(668,234,30,28,'#5e3c27') + rn(672,240,22,20,'#f4f1e6');
+  s += `<rect x="452" y="340" width="64" height="40" fill="#1a1530" opacity=".55"/>` + r(456,352,56,28,'#6b5a3a') + rn(464,346,14,10,'#e2464f') + rn(482,346,14,10,'#e2464f');
+  s += r(716,170,52,60,'#222') + rn(722,176,40,40,'#ff3d7f') + r(736,230,12,154,'#4c5375') + r(718,374,48,10,'#4c5375') + r(752,206,18,16,'#ffd23d');
+  s += r(784,110,120,274,'#4c5375');
+  for (const y of [180,260,340]) s += r(784,y,120,8,'#7d86a8');
+  [[150,12],[230,12],[310,9]].forEach(([y,n]) => { for (let i=0;i<n;i++) s += rn(788+i*9.6, y, 8, 30, i%2 ? '#e2464f' : '#c93a44'); });
+  s += r(908,200,44,184,'#c98d4b') + rn(920,214,20,20,'#ffd23d') + rn(916,238,28,40,'#3d8bff') + rn(918,280,10,40,'#3d8bff') + rn(932,280,10,40,'#3d8bff') + rn(944,230,5,52,'#cfd6ff');
+  return s;
+}
+
+function art5(){ // ZONE ANIMATION
+  let s = wall('#3a1f4a','#341c44') + floorTiles('#2a1838','#24132f');
+  s += `<path d="M0 30 Q 120 62 240 30 T 480 30 T 720 30 T 960 30" fill="none" stroke="#1b5e3a" stroke-width="4"/>`;
+  const bc = ['#ff4757','#ffd23d','#4dff8a','#3de1ff'];
+  for (let i=0;i<24;i++){ const x = 20 + i*40, y = 30 + 14*Math.sin(i*Math.PI/3 + .5); s += `<circle cx="${x}" cy="${y.toFixed(1)}" r="6" fill="${bc[i%4]}" stroke="${O}" stroke-width="2"/>`; }
+  s += r(56,58,152,170,'#f4f1e6') + rn(56,58,152,26,'#ff3d7f') + tx(132,76,'CONCOURS',9,'#fff');
+  for (let i=0;i<5;i++) s += tx(70,106+i*24,(i+1)+'.',8,'#1b1630','start') + rn(90,99+i*24,100,5,'#9a93b3');
+  s += r(50,300,290,14,'#8a5a3b') + r(62,314,12,70,'#5e3c27') + r(316,314,12,70,'#5e3c27');
+  s += `<path d="M120 300 L135 252 L255 252 L270 300 Z" fill="#c98d4b" stroke="${O}" stroke-width="3"/><path d="M150 254 Q 195 206 240 254" fill="none" stroke="${O}" stroke-width="5"/>` + tx(195,284,'LOT ?',9,O);
+  s += r(372,300,140,84,'#4c5375') + tx(442,346,'NEW GAME',8,'#ffd23d') + `<line x1="442" y1="300" x2="442" y2="206" stroke="${O}" stroke-width="7"/><line x1="442" y1="300" x2="442" y2="206" stroke="#7d86a8" stroke-width="3"/><ellipse cx="442" cy="194" rx="13" ry="17" fill="#333" stroke="${O}" stroke-width="3"/>`;
+  s += r(560,96,146,288,'#3d1a6e') + r(572,108,122,30,'#ff3d7f') + tx(633,128,'GLITCH.EXE',8,'#fff') + r(578,148,110,90,'#0b0918');
+  s += rn(606,170,16,16,'#ff3d7f') + rn(644,170,16,16,'#ff3d7f') + rn(610,206,48,8,'#3de1ff') + rn(600,190,4,4,'#3de1ff') + rn(668,214,6,4,'#4dff8a');
+  s += r(572,250,122,40,'#2a1150') + chipsRow(594,260,['blue','red','black'],20,10);
+  s += r(616,320,34,24,'#222') + tx(633,337,'COIN',6,'#ffd23d');
+  s += r(770,150,74,118,'#222') + `<circle cx="807" cy="190" r="18" fill="#444" stroke="${O}" stroke-width="3"/><circle cx="807" cy="240" r="12" fill="#444" stroke="${O}" stroke-width="3"/>` + r(800,268,14,116,'#4c5375') + r(780,374,54,10,'#4c5375');
+  s += `<polygon points="900,140 858,230 880,230 842,310 872,310 836,370 960,370 930,310 958,310 922,230 944,230" fill="#1f8f4e" stroke="${O}" stroke-width="3"/>` + r(890,370,20,14,'#5e3c27') + `<polygon points="900,122 906,136 920,136 909,144 913,158 900,150 887,158 891,144 880,136 894,136" fill="#ffd23d" stroke="${O}" stroke-width="2"/>`;
+  for (const [x,y,c] of [[880,250,'#ff4757'],[915,280,'#3de1ff'],[870,330,'#ffd23d'],[930,340,'#ff3d7f'],[900,200,'#4dff8a']]) s += `<circle cx="${x}" cy="${y}" r="7" fill="${c}" stroke="${O}" stroke-width="2"/>`;
+  return s;
+}
+
+/* =========================================================
+   DOCUMENTS À LIRE (vues zoomées)
+   ========================================================= */
+const LABELS = {
+  L1:{name:'Manette ProPad X noire', ref:'MAN-PX', price:'59,99 €', sticker:'Prix collé sur la boîte : 59,99 €'},
+  L2:{name:'Casque SoundWave 7.1', ref:'CAS-SW', price:'79,99 €', sticker:'Prix collé sur la boîte : 69,99 €'},
+  L3:{name:'Jeu Star Knights VI', ref:'JEU-SK6', price:'— , — €', sticker:'Prix collé sur la boîte : 59,99 €'},
+  L4:{name:'Pixel Gummies · sachet 250 g', ref:'BON-PG', price:'2,49 €', unit:'Prix au kg : ……', sticker:''},
+  L5:{name:'Jeu Kart Legends', ref:'JEU-KL', price:'39,99 €', promo:'PROMO −30 %', old:'49,99 €', sticker:''},
+  L6:{name:'Carte mémoire 1 To', ref:'MEM-1T', price:'89,99 €', sticker:'Prix collé sur la boîte : 89,99 €'}
+};
+const BAGS = {
+  101:{client:'Léa M.', items:['Jeu Star Knights VI','Manette ProPad X noire']},
+  102:{client:'Hugo B.', items:['Casque SoundWave 7.1']},
+  103:{client:'Inès K.', items:['Figurine Robo Cat','Figurine Robo Cat']},
+  104:{client:'Nathan D.', items:['Carte mémoire 1 To','Câble HDMI 2 m']}
+};
+function calendarHTML(){
+  const days = ['Lu','Ma','Me','Je','Ve','Sa','Di']; let h = '<table class="doc"><tr>' + days.map(d=>`<th>${d}</th>`).join('') + '</tr><tr><td></td>';
+  let col = 1;
+  for (let d=1; d<=31; d++){
+    const wd = col % 7; // 0 = lundi
+    let note = '', st = '';
+    if (wd === 1 || wd === 4) note = '<br><small>🚚 livraison</small>';
+    if (d === 19){ st = 'background:#ffd23d;'; note = '<br><small><b>AUJOURD’HUI</b></small>'; }
+    if (d === 24) note += '<br><small>Retraits C&C</small>';
+    if (d === 25){ st = 'background:#f6b4b4;'; note = '<br><small><b>FÉRIÉ · fermé</b></small>'; }
+    h += `<td style="${st}vertical-align:top">${d}${note}</td>`;
+    col++; if (col % 7 === 0 && d < 31) h += '</tr><tr>';
+  }
+  return h + '</tr></table>';
+}
+const DOCS = {
+  bc:{title:'Bon de commande', html:()=>`<div class="paper"><h3>NEW GAME · Bon de commande n° BC-1187</h3><div class="meta">Fournisseur : GameDistrib · Date de commande : 12/12/2026</div>
+    <table class="doc"><tr><th>Réf.</th><th>Désignation</th><th>Quantité commandée</th></tr>
+    <tr><td>MAN-PX</td><td>Manette ProPad X noire</td><td>24</td></tr><tr><td>CAS-SW</td><td>Casque SoundWave 7.1</td><td>12</td></tr>
+    <tr><td>JEU-SK6</td><td>Jeu Star Knights VI</td><td>40</td></tr><tr><td>CAR-50</td><td>Carte cadeau 50 €</td><td>30</td></tr></table></div>`},
+  bl:{title:'Bon de livraison', html:()=>`<div class="paper"><h3>GameDistrib · Bon de livraison n° 88412</h3><div class="meta">Transporteur : RapidColis · Livré le 19/12/2026 · Commande BC-1187</div>
+    <table class="doc"><tr><th>Réf.</th><th>Désignation</th><th>Quantité livrée</th></tr>
+    <tr><td>MAN-PX</td><td>Manette ProPad X noire</td><td>24</td></tr><tr><td>CAS-SW</td><td>Casque SoundWave 7.1</td><td>12</td></tr>
+    <tr><td>JEU-SK6</td><td>Jeu Star Knights VI</td><td>40</td></tr><tr><td>CAR-50</td><td>Carte cadeau 50 €</td><td>30</td></tr><tr><td>VOL-RM</td><td>Volant RaceMax</td><td>4</td></tr></table>
+    <p style="margin-top:10px">Signature du réceptionnaire : ………………… &nbsp; Réserves : …………………………………</p></div>`},
+  colis:{title:'Contenu réel des colis', html:()=>`<p>Tu as ouvert tous les colis et compté les produits un par un.</p><div class="cards">
+    <div class="card"><div class="ref">COLIS A · MAN-PX</div><div class="q">24</div>manettes ProPad X<br>État : bon</div>
+    <div class="card"><div class="ref">COLIS B · CAS-SW</div><div class="q">10</div>casques SoundWave<br>État : bon</div>
+    <div class="card bad"><div class="ref">COLIS C · JEU-SK6</div><div class="q">40</div>jeux Star Knights VI<br><b>Carton écrasé : 6 boîtiers cassés</b></div>
+    <div class="card"><div class="ref">COLIS D · CAR-50</div><div class="q">30</div>cartes cadeaux 50 €<br>État : bon</div>
+    <div class="card"><div class="ref">COLIS E · VOL-RM</div><div class="q">4</div>volants RaceMax<br>État : bon</div></div>`},
+  poster1:{title:'Affiche sécurité', html:()=>`<div class="paper" style="background:#ffe680"><h3>⚠ CONSIGNES DE SÉCURITÉ · RÉSERVE</h3>
+    <ul><li>Les allées restent dégagées.</li><li>Les extincteurs restent visibles et accessibles.</li><li>Les charges lourdes se rangent en bas, jamais en hauteur.</li><li>Le sol reste propre et sec.</li></ul>
+    <p><b>Mission :</b> le Glitch a créé <b>4 dangers</b> dans cette réserve. Repère-les en cliquant dessus dans le décor.</p></div>
+    <p class="fragchip">Dangers repérés : ${S.dangers.length} / 4</p>`},
+  trash1:{title:'Papier froissé', html:()=>`<div class="note">Un papier froissé dans la poubelle… L’écriture du Glitch :<br><br>${CH('black')} = nombre de manettes livrées ÷ 8</div>`},
+  calendar:{title:'Calendrier · décembre 2026', html:()=>`<div class="paper"><h3>Décembre 2026</h3><div class="meta">🚚 = jours de livraison GameDistrib</div>${calendarHTML()}</div>`},
+  whiteboard:{title:'Tableau blanc', html:()=>`<div class="paper" style="background:#eef3ff"><h3>NE PAS EFFACER</h3><p style="font-size:28px">${CH('red')} ${CH('green')} ${CH('black')} ${CH('blue')}</p><p><b>Code de la porte de la boutique.</b></p><p>Commande GameDistrib à recevoir AVANT le jeudi 24/12 !</p></div>`},
+  postit2:{title:'Post-it sous le clavier', html:()=>`<div class="note">Mot de passe de l’ordi :<br>le niveau de stock en dessous duquel il faut recommander.<br>(1 mot · 5 lettres)</div>`},
+  clock2:{title:'Horloge', html:()=>`<div class="note">L’horloge est arrêtée. Une étiquette est collée dessous :<br><br>${CH('black')} = l’heure indiquée par l’horloge</div>`},
+  mail:{title:'Mail de Sarah (manager)', html:()=>`<div class="screen">De : Sarah · Manager New Game<br>Objet : Commande GameDistrib URGENTE<br><br>Salut ! Le Glitch a bloqué le réassort.<br>1. Remplis la <b>fiche de stock</b>.${S.level==='hardcore'?'':'<br>&nbsp;&nbsp;&nbsp;Quantité à commander = seuil minimum − stock actuel.<br>&nbsp;&nbsp;&nbsp;Si le stock suffit, inscris 0.'}<br>2. Remplis le <b>bon de commande</b> : seulement les produits à commander.<br>3. On n’a pas de véhicule : choisis la <b>livraison magasin</b>.<br>4. GameDistrib ne livre que certains jours (voir calendrier).<br><br>Merci, tu gères ! Sarah</div>`},
+  supplier:{title:'Fiche fournisseur', html:()=>`<div class="paper"><h3>Fiche fournisseur · GameDistrib</h3><table class="doc"><tr><th>Contact</th><td>Mme Rossi, service commandes</td></tr><tr><th>Jours de livraison</th><td>mardi et vendredi</td></tr><tr><th>Délai</th><td>48 h après la commande</td></tr><tr><th>Modes</th><td>livraison magasin ou retrait au dépôt fournisseur (Metz)</td></tr></table></div>`},
+  poster3:{title:'Affiche Star Knights VI', html:()=> S.usedItems.uv
+    ? `<div class="note" style="background:#7b2cff;color:#f5e9ff">Sous la lumière UV, un message apparaît :<br><br>${CH('black')} = 8</div>`
+    : `<div class="paper"><h3>STAR KNIGHTS VI · disponible !</h3><p>Une affiche de jeu. En regardant de près, tu vois de petites traces bizarres, invisibles à l’œil nu… Il faudrait une lumière spéciale.</p></div>`},
+  shelf4:{title:'Rayon Kart Legends', html:()=>{
+    let s = '<svg viewBox="0 0 620 330" style="width:100%;max-width:620px;justify-self:center;background:#39406a;border:3px solid #07060f" shape-rendering="crispEdges">';
+    [[20,12],[120,12],[220,9]].forEach(([y,n]) => { for (let i=0;i<n;i++) s += `<rect x="${18+i*49}" y="${y}" width="40" height="70" fill="${i%2?'#e2464f':'#c93a44'}" stroke="#07060f" stroke-width="3"/><rect x="${24+i*49}" y="${y+10}" width="28" height="10" fill="#ffd23d"/>`; s += `<rect x="6" y="${y+72}" width="608" height="10" fill="#7d86a8" stroke="#07060f" stroke-width="3"/>`; });
+    return s + '</svg><p>Le rayon des boîtes <b>Kart Legends</b>. Compte bien… Tout le stock est-il vraiment ici ?</p>'; }},
+  basket4:{title:'Panier sous le comptoir', html:()=>`<div class="paper"><h3>Panier caché sous le comptoir</h3><p>Tu trouves <b>2 boîtes Kart Legends</b> neuves, mises de côté par un collègue. Elles font partie du stock du magasin.</p></div>`},
+  casse4:{title:'Fiche casse', html:()=>`<div class="paper"><h3>FICHE CASSE · 19/12/2026</h3><table class="doc"><tr><th>Produit</th><th>Qté</th><th>Motif</th></tr><tr><td>Kart Legends</td><td>3</td><td>Boîtiers fendus (chute du présentoir)</td></tr></table><p style="margin-top:8px">Visa : Sarah</p></div>`},
+  demo4:{title:'Post-it sur la borne de démo', html:()=>`<div class="note">1 boîte Kart Legends ouverte pour la borne de démonstration. Ne pas vendre !<br>— Sarah</div>`},
+  plv4:{title:'Derrière le présentoir', html:()=>`<div class="paper"><h3>Une boîte vide…</h3><p>Derrière le présentoir en carton, tu trouves une boîte <b>Kart Legends vide</b>. L’antivol a été arraché. Un vol que personne n’a vu !</p></div><div class="note">Au fond de la boîte, le Glitch a écrit :<br>${CH('black')} = nombre de boîtes de la démarque inconnue</div>`},
+  affiche5:{title:'Affiche du jeu-concours', html:()=>`<div class="paper"><h3>🎁 DEVINE LE PRIX DU PANIER GAMER !</h3><p>Le client qui trouve le prix le plus proche gagne le panier. Règles du panier-lot :</p><ol><li>Le panier vaut entre 90 € et 100 €.</li><li>Il contient au moins 1 jeu vidéo.</li><li>Il contient au moins 1 accessoire.</li><li>Il contient au moins 1 produit gourmand.</li><li>5 articles maximum.</li></ol></div>`},
+  speaker5:{title:'Derrière l’enceinte', html:()=>`<div class="note">Scotché derrière l’enceinte :<br><br>${CH('black')} = nombre de règles du jeu-concours</div>`}
+};
+for (const k of ['L1','L2','L3','L4','L5','L6']){
+  DOCS['lab'+k] = {title:'Étiquette ' + k.slice(1), html:()=>{ const d = LABELS[k];
+    return `<div class="label-card">${d.promo?`<span class="promo">${d.promo}</span>`:''}<div class="ln">${d.name}</div><small>Réf. ${d.ref}</small><div class="lp">${d.old?`<span class="lo">${d.old}</span> `:''}${d.price}</div>${d.unit?`<small>${d.unit}</small>`:''}<small>Prix TTC</small></div>${d.sticker?`<div class="sticker">${d.sticker}</div>`:''}<p class="muted">Étiquette n° ${k.slice(1)} inspectée. Note ton verdict sur la fiche de contrôle (à la caisse).</p>`; }};
+}
+for (const n of [101,102,103,104]){
+  DOCS['bag'+n] = {title:'Sac click & collect #' + n, html:()=>`<div class="paper bag"><h3>Sac #${n}</h3><div class="meta">Préparé par : ??? · Nom sur le ticket : ${BAGS[n].client}</div><table class="doc"><tr><th>Contenu du sac</th></tr>${BAGS[n].items.map(i=>`<tr><td>${i}</td></tr>`).join('')}</table></div>`};
+}
+
+/* =========================================================
+   ÉNIGMES
+   ========================================================= */
+const ETATS = ['Conforme','Quantité manquante','Produits abîmés','Non commandé : à refuser'];
+const PLACES = ['En haut','Au milieu (hauteur des yeux et des mains)','En bas','Dans l’armoire fermée à clé'];
+const ETIQ = ['Conforme','Prix manquant','Prix différent de celui du produit','Prix au kg / au litre manquant','Réduction annoncée fausse'];
+const CCOPT = ['Conforme','Article manquant','Mauvais article','Article en trop'];
+const DEM = ['Démarque connue','Démarque inconnue'];
+const sel = (key, options, answer, extra={}) => Object.assign({key, kind:'select', options, answer}, extra);
+const num = (key, answer, extra={}) => Object.assign({key, kind:'num', answer}, extra);
+const radio = (key, label, options, answer) => ({key, kind:'radio', label, options, answer});
+const seenReq = (k, msg) => ({req:()=>!!S.seen[k], reqMsg:msg});
+
+const PUZ = {
+  r1red:{room:0, color:'red', value:6, title:'Fiche de réception', comp:'Réceptionner une livraison', fields:[
+    {type:'html', html:'Compare le <b>bon de commande</b>, le <b>bon de livraison</b> et le <b>contenu réel des colis</b>. Pour chaque référence, indique l’état de la réception.'},
+    {type:'table', head:['Référence','Produit','État de la réception'], rows:[
+      ['MAN-PX','Manettes ProPad X', sel('man',ETATS,'Conforme')],
+      ['CAS-SW','Casques SoundWave', sel('cas',ETATS,'Quantité manquante')],
+      ['JEU-SK6','Jeux Star Knights VI', sel('jeu',ETATS,'Produits abîmés')],
+      ['CAR-50','Cartes cadeaux 50 €', sel('car',ETATS,'Conforme')],
+      ['VOL-RM','Volants RaceMax', sel('vol',ETATS,'Non commandé : à refuser')]]},
+    {type:'table', head:['Quantités à signaler','Nombre'], rows:[['Casques manquants', num('ncas',2)],['Jeux abîmés', num('njeu',6)]]},
+    radio('res','Quelle réserve écris-tu sur le bon de livraison, avant de signer ?',[
+      'Colis abîmé.',
+      'CAS-SW : 2 casques manquants. JEU-SK6 : carton écrasé, 6 boîtiers cassés. VOL-RM : 4 volants non commandés, refusés.',
+      'Sous réserve de déballage.'],1)],
+    hints:['Ouvre les colis (il te faut un outil pour couper le film plastique) et compare chaque quantité avec le bon de livraison.','Le volant n’apparaît pas sur le bon de commande. Une réserve est valable seulement si elle est précise : références, quantités, dégâts.'],
+    done:'Des réserves précises obligent le fournisseur à remplacer ou rembourser les produits.'},
+  r1blue:{room:0, color:'blue', value:9, title:'Ranger la réserve', comp:'Stocker les produits', fields:[
+    {type:'html', html:'L’étagère est en désordre. Choisis le bon emplacement pour chaque produit.'},
+    {type:'table', head:['Produit','Emplacement'], rows:[
+      ['Console NeoBox · carton de 14 kg', sel('neo',PLACES,'En bas')],
+      ['Manettes ProPad X · 2 kg, se vendent beaucoup', sel('man',PLACES,'Au milieu (hauteur des yeux et des mains)')],
+      ['Guirlandes de décoration · très légères, rarement utilisées', sel('gui',PLACES,'En haut')],
+      ['Cartes cadeaux 50 € · petites et de grande valeur', sel('car',PLACES,'Dans l’armoire fermée à clé')],
+      ['Pack d’eau de l’équipe · 9 kg', sel('eau',PLACES,'En bas')]]},
+    radio('fifo','Deux cartons de Kart Legends : le lot A est arrivé le 28/11, le lot B aujourd’hui. Lequel places-tu devant, pour qu’il sorte en premier ?',['Le lot B, il est plus récent','Le lot A, il est arrivé en premier','Peu importe'],1),
+    radio('meth','Comment s’appelle cette méthode ?',['LIFO : dernier entré, premier sorti','ABC : par ordre alphabétique','FIFO : premier entré, premier sorti'],2)],
+    hints:['Lourd en bas, léger en haut. Ce qui se vend le plus se range à portée de main.','Les produits de valeur se protègent contre le vol. Le produit le plus ancien sort en premier.'],
+    done:'Une réserve bien rangée, c’est moins d’accidents et moins de pertes.'},
+  r2red:{room:1, color:'red', value:4, title:'Fiche de stock · GameDistrib', comp:'Calculer une quantité à commander', fields:[
+    {type:'html', html:()=> S.level==='hardcore' ? 'Calcule la quantité à commander pour chaque produit.' : 'Calcule la quantité à commander : <b>seuil minimum − stock actuel</b>. Si le stock est suffisant, inscris <b>0</b>.'},
+    {type:'table', head:['Produit','Stock actuel','Seuil minimum','Quantité à commander'], rows:[
+      ['Manette ProPad X','8','20', num('man',12)],
+      ['Casque SoundWave 7.1','15','10', num('cas',0)],
+      ['Jeu Star Knights VI','12','45', num('jeu',33)],
+      ['Carte mémoire 1 To','3','10', num('mem',7)],
+      ['Câble HDMI 2 m','25','15', num('hdmi',0)],
+      ['Figurine Pixel Fox','4','9', num('fig',5)]]}],
+    hints:['Quantité à commander = seuil minimum − stock actuel.','Si le stock actuel est plus grand que le seuil minimum, on ne commande rien : inscris 0.'],
+    done:'4 produits sont à commander.'},
+  r2blue:{room:1, color:'blue', value:2, title:'Bon de commande GameDistrib', comp:'Remplir un bon de commande', fields:[
+    {type:'html', html:'Remplis le bon de commande. <b>Laisse vide</b> la case des produits qu’il ne faut pas commander.'},
+    {type:'table', head:['Réf.','Produit','Quantité commandée'], rows:[
+      ['MAN-PX','Manette ProPad X', num('man',12,{blankZero:true})],
+      ['CAS-SW','Casque SoundWave 7.1', num('cas',0,{blankZero:true})],
+      ['JEU-SK6','Jeu Star Knights VI', num('jeu',33,{blankZero:true})],
+      ['MEM-1T','Carte mémoire 1 To', num('mem',7,{blankZero:true})],
+      ['HDMI-2','Câble HDMI 2 m', num('hdmi',0,{blankZero:true})],
+      ['FIG-PF','Figurine Pixel Fox', num('fig',5,{blankZero:true})]]},
+    {type:'table', head:['Rubrique','Ta réponse'], rows:[
+      ['Date de livraison souhaitée', sel('date',['Lundi 21/12','Mardi 22/12','Jeudi 24/12','Vendredi 25/12'],'Mardi 22/12')],
+      ['Mode de livraison', sel('mode',['Livraison magasin','Retrait fournisseur'],'Livraison magasin')],
+      ['Observations (facultatif)', {key:'obs', kind:'text'}]]}],
+    hints:['Relis le mail de Sarah et regarde le calendrier : quels jours GameDistrib livre-t-il ?','La marchandise doit arriver avant le jeudi 24/12, et le 25/12 est férié.'],
+    done:'Commande prête : livraison au magasin le mardi 22/12.'},
+  r2green:{room:1, color:'green', value:7, title:'Appel au fournisseur', comp:'Téléphoner à un fournisseur', fields:[
+    {type:'html', html:'Le téléphone sonne : c’est Mme Rossi, de GameDistrib. À chaque étape, choisis la formulation <b>la plus professionnelle</b>.'},
+    radio('a1','1. Tu décroches.',['Allô, c’est qui ?','Bonjour, New Game, [ton prénom] à l’appareil, que puis-je pour vous ?','Ouais, New Game.'],1),
+    radio('a2','2. Mme Rossi : « Je vous appelle au sujet de votre commande. » Tu réponds :',['Je vous confirme notre commande pour une livraison au magasin le mardi 22 décembre.','Ouais faut livrer vite, c’est Noël.','J’ai envoyé un truc ce matin, normalement.'],0),
+    radio('a3','3. Mme Rossi : « Les cartes mémoire 1 To sont en rupture jusqu’au 5 janvier. »',['Ah bah tant pis.','C’est pas sérieux, ça !','Pouvez-vous me proposer un produit de remplacement équivalent ?'],2),
+    radio('a4','4. Avant de raccrocher :',['OK ça marche, à plus.','Je récapitule : 12 manettes, 33 jeux Star Knights VI, 5 figurines et un produit de remplacement pour les cartes mémoire, livrés mardi 22/12. Est-ce bien noté ?','Vous avez noté, j’espère ?'],1),
+    radio('a5','5. Pour finir :',['Bye !','Allez, salut.','Je vous remercie, madame. Bonne journée, au revoir.'],2)],
+    hints:['Au téléphone, on se présente, on vouvoie et on reste poli et précis.','Récapituler la commande évite les erreurs.'],
+    done:'Appel parfait : la commande est confirmée.'},
+  r3red:{room:2, color:'red', value:9, title:'Prix à l’unité de mesure', comp:'Calculer un prix au kg / au litre', fields:[
+    {type:'html', html:'Le Glitch a effacé les prix au kilo et au litre. Calcule-les, <b>arrondis au centime</b> (exemple : 4,50).'},
+    {type:'html', only:['easy'], html:'Conversions : 250 g = 0,25 kg · 400 g = 0,4 kg · 50 cl = 0,5 L · 75 cl = 0,75 L'},
+    {type:'table', head:['Produit','Contenance','Prix','Prix au kg ou au litre (€)'], rows:[
+      ['Pixel Gummies (bonbons)','250 g','2,49 €', num('gum',9.96,{tol:.011})],
+      ['Choco Level Up (chocolats)','400 g','5,90 €', num('cho',14.75,{tol:.011})],
+      ['Power Up (boisson)','50 cl','1,85 €', num('pow',3.70,{tol:.011})],
+      ['Retro Cola (boisson)','75 cl','1,20 €', num('col',1.60,{tol:.011})]]}],
+    hints:['Prix au kg = prix ÷ poids en kg. Prix au litre = prix ÷ volume en litres.','250 g = 0,25 kg · 400 g = 0,4 kg · 50 cl = 0,5 L · 75 cl = 0,75 L'],
+    done:'Le prix au kg ou au litre permet au client de comparer les produits.'},
+  r3blue:{room:2, color:'blue', value:4, title:'Fiche de contrôle de l’étiquetage', comp:'Vérifier la conformité des étiquettes', fields:[
+    {type:'html', html:'Inspecte les <b>6 étiquettes jaunes</b> du magasin en cliquant dessus dans le décor, puis note ton verdict.'},
+    {type:'table', head:['Étiquette','Verdict'], rows:['L1','L2','L3','L4','L5','L6'].map(k => [
+      `N° ${k.slice(1)} · ${S_label(k)}`, sel(k,ETIQ,{L1:'Conforme',L2:'Prix différent de celui du produit',L3:'Prix manquant',L4:'Prix au kg / au litre manquant',L5:'Réduction annoncée fausse',L6:'Conforme'}[k], seenReq('lab'+k,'🔒 Étiquette pas encore inspectée'))])}],
+    hints:['Il y a 6 étiquettes : 4 sous la gondole des jeux, 1 sur le présentoir de bonbons, 1 sur la tête de gondole promo.','Compare le prix de l’étiquette avec le prix collé sur le produit. Pour la promo : 49,99 € − 30 % = 49,99 × 0,7 = ?'],
+    done:'4 étiquettes étaient non conformes. Le client doit toujours payer le prix affiché !'},
+  r3green:{room:2, color:'green', value:1, title:'Classeur : l’information du client', comp:'Respecter la réglementation de l’affichage des prix', fields:[
+    {key:'ment', kind:'checks', label:'Coche les mentions <b>obligatoires</b> pour informer le client sur les prix.', options:[
+      'La désignation du produit','Le prix de vente TTC en euros','Le prix d’achat payé au fournisseur','Le prix au kg ou au litre (produits vendus au poids ou au volume)','La marge du magasin','Le prénom du vendeur','L’ancien prix (prix de référence) en cas de réduction'], answer:[0,1,3,6]}],
+    hints:['Ce qui est obligatoire aide le client à choisir et à comparer.','Le client n’a pas à connaître ce que le magasin a payé ni ce qu’il gagne.'],
+    done:'4 mentions obligatoires : désignation, prix TTC, prix à l’unité de mesure, prix de référence en cas de promo.'},
+  r4red:{room:3, color:'red', value:3, title:'Commandes click & collect', comp:'Préparer les commandes clients', fields:[
+    {type:'html', html:`Clique sur les 4 sacs dans les casiers pour voir leur contenu, puis compare avec les commandes ci-dessous.<div class="tbl-wrap"><table class="pz-table" style="margin-top:8px"><tr><th>Commande</th><th>Client</th><th>Articles commandés</th></tr>
+      <tr><td>#101</td><td>Léa M.</td><td>Jeu Star Knights VI + Manette ProPad X noire</td></tr><tr><td>#102</td><td>Hugo B.</td><td>Casque SoundWave 7.1 + Carte cadeau 50 €</td></tr>
+      <tr><td>#103</td><td>Inès K.</td><td>2 Figurines Pixel Fox</td></tr><tr><td>#104</td><td>Nathan D.</td><td>Carte mémoire 1 To</td></tr></table></div>`},
+    {type:'table', head:['Sac','Verdict'], rows:[101,102,103,104].map(n => ['Sac #'+n, sel('b'+n,CCOPT,{101:'Conforme',102:'Article manquant',103:'Mauvais article',104:'Article en trop'}[n], seenReq('bag'+n,'🔒 Sac pas encore ouvert'))])},
+    radio('id','Le client arrive au comptoir. Que lui demandes-tu avant de lui remettre son sac ?',['Rien, je lui donne le premier sac','Son numéro de commande et une pièce d’identité','Le code de sa carte bancaire'],1)],
+    hints:['Ouvre chaque sac (clique dessus dans le décor) et compare article par article.','Un article peut manquer, être remplacé par un autre, ou être en trop.'],
+    done:'3 commandes sur 4 étaient fausses. Bien vu !'},
+  r4blue:{room:3, color:'blue', value:5, title:'Fiche d’inventaire · Kart Legends', comp:'Faire un inventaire', fields:[
+    {type:'html', html:'Selon l’ordinateur, il devrait y avoir <b>40 boîtes</b> de Kart Legends (stock théorique). Compte le stock réel et explique l’écart.'},
+    {type:'table', head:['Ligne de l’inventaire','Nombre'], rows:[
+      ['Stock physique (toutes les boîtes comptées dans le magasin)', num('phys',35)],
+      ['Écart = stock théorique − stock physique', num('ecart',5)],
+      ['Dont boîtes cassées (fiche casse)', num('casse',3)],
+      ['Dont boîtes utilisées pour la démo', num('demo',1)],
+      ['Dont écart inexpliqué', num('inc',1)]]}],
+    hints:['Compte les boîtes du rayon… puis cherche s’il n’y en a pas ailleurs, près du comptoir.','Écart = 40 − stock physique. Retire ensuite les pertes que l’on connaît (casse, démo) : ce qui reste est inexpliqué.'],
+    done:'Écart de 5 boîtes : 3 cassées, 1 en démo, 1 disparue sans explication.'},
+  r4green:{room:3, color:'green', value:6, title:'Registre de démarque', comp:'Distinguer démarque connue et inconnue', fields:[
+    {type:'html', html:'<b>Démarque connue</b> : la perte est constatée et enregistrée. <b>Démarque inconnue</b> : on découvre l’écart à l’inventaire, sans savoir ce qui s’est passé. Classe chaque situation.'},
+    {type:'table', head:['Situation','Type de démarque'], rows:[
+      ['Une boîte tombe et se casse devant toi : tu remplis la fiche casse.', sel('s1',DEM,'Démarque connue')],
+      ['Un jeu est volé sans que personne ne le voie.', sel('s2',DEM,'Démarque inconnue')],
+      ['Une boîte est ouverte pour la borne de démonstration.', sel('s3',DEM,'Démarque connue')],
+      ['Une erreur de saisie en caisse passe inaperçue.', sel('s4',DEM,'Démarque inconnue')],
+      ['Un produit abîmé est retiré de la vente et noté dans le registre.', sel('s5',DEM,'Démarque connue')],
+      ['Une erreur de quantité à la réception n’a pas été vue.', sel('s6',DEM,'Démarque inconnue')]]}],
+    hints:['Connue = on sait ce qui s’est passé ET c’est noté quelque part.','Inconnue = on ne le découvre qu’au moment de l’inventaire.'],
+    done:'La démarque inconnue, c’est de l’argent perdu sans explication : il faut la réduire !'},
+  r5red:{room:4, color:'red', value:7, title:'Le panier-lot du jeu-concours', comp:'Composer une offre adaptée', custom:true,
+    hints:['Relis l’affiche du concours, à gauche : elle donne les 5 règles du panier.','Exemple de départ : un jeu à 59,99 €, puis complète avec des articles moins chers.']},
+  r5blue:{room:4, color:'blue', value:3, title:'L’annonce micro', comp:'Faire une annonce commerciale', fields:[
+    {type:'html', html:'Prépare l’annonce micro du jeu-concours. Choisis la meilleure phrase pour chaque partie.'},
+    radio('acc','1. L’ACCROCHE (attirer l’attention)',['Euh… allô ? Ça marche, le micro ?','Bonjour à tous les gamers ! Ici l’équipe New Game !','Achetez ! Achetez ! Achetez !'],1),
+    radio('ani','2. L’ANIMATION (présenter l’offre)',['On a des trucs en rayon.','Le règlement fait 12 pages, je vais vous le lire en entier.','Jusqu’à 18 h, devinez le prix de notre panier gamer de Noël et tentez de le gagner !'],2),
+    radio('inc','3. L’INCITATION (faire agir le client)',['Rendez-vous à l’espace animation, près des caisses : les bulletins vous attendent !','Voilà voilà.','Venez si vous voulez, ou pas.'],0),
+    radio('dur','4. Combien de temps doit durer l’annonce, au maximum ?',['30 secondes','2 minutes','5 minutes'],0)],
+    hints:['Accroche → animation → incitation : on attire, on présente, on fait agir.','Une annonce efficace est courte : les clients n’écoutent pas longtemps.'],
+    done:'Annonce prête : courte, claire et motivante.'}
+};
+function S_label(k){ return LABELS[k].name; }
+
+const LOT = [
+  {id:'sk6', n:'Jeu Star Knights VI', p:59.99, c:'jeu'}, {id:'kart', n:'Jeu Kart Legends', p:39.99, c:'jeu'},
+  {id:'man', n:'Manette ProPad X', p:59.99, c:'acc'}, {id:'cas', n:'Casque SoundWave 7.1', p:69.99, c:'acc'},
+  {id:'hdmi', n:'Câble HDMI 2 m', p:12.99, c:'acc'}, {id:'fig', n:'Figurine Pixel Fox', p:14.99, c:'goodies'},
+  {id:'mug', n:'Mug Pixel', p:9.99, c:'goodies'}, {id:'gum', n:'Pixel Gummies 250 g', p:2.49, c:'gourmand'},
+  {id:'cho', n:'Choco Level Up 400 g', p:5.90, c:'gourmand'}, {id:'pow', n:'Power Up 50 cl', p:1.85, c:'gourmand'}];
+const CATN = {jeu:'Jeu vidéo', acc:'Accessoire', goodies:'Goodies', gourmand:'Gourmand'};
+
+const VOCAB = [
+  ['Remarques précises écrites sur le bon de livraison quand une livraison pose problème.','Les réserves'],
+  ['Méthode de stockage : le premier produit entré est le premier sorti.','FIFO'],
+  ['Niveau de stock en dessous duquel il faut passer commande.','Le seuil minimum'],
+  ['Document du fournisseur qui accompagne la marchandise livrée.','Le bon de livraison'],
+  ['Document envoyé au fournisseur pour demander des produits.','Le bon de commande'],
+  ['Écart d’inventaire dont on ne connaît pas la cause.','La démarque inconnue'],
+  ['Pertes constatées et enregistrées : casse, produits de démo…','La démarque connue'],
+  ['Comptage physique de tous les produits présents en stock.','L’inventaire'],
+  ['Mise en place des étiquettes de prix dans les rayons.','Le balisage'],
+  ['Prix ramené à 1 kg ou à 1 litre pour comparer les produits.','Le prix à l’unité de mesure'],
+  ['Commande passée sur Internet et retirée en magasin.','Le click & collect'],
+  ['Première phrase d’une annonce, faite pour attirer l’attention.','L’accroche'],
+  ['Ensemble de produits à gagner lors d’un jeu-concours.','Le panier-lot'],
+  ['Situation où un produit n’est plus disponible.','La rupture de stock'],
+  ['Remettre des produits en rayon pour qu’il n’en manque pas.','Le réassort']
+];
+
+const COMPS = [
+  {id:'recep', label:'Contrôler une livraison et rédiger des réserves', pz:['r1red']},
+  {id:'stock', label:'Ranger la réserve en sécurité (FIFO, dangers)', pz:['r1blue','dangers']},
+  {id:'appro', label:'Calculer une quantité à commander et remplir un bon de commande', pz:['r2red','r2blue']},
+  {id:'tel',   label:'Téléphoner à un fournisseur avec des formules professionnelles', pz:['r2green']},
+  {id:'bali',  label:'Calculer un prix au kg / au litre et contrôler les étiquettes', pz:['r3red','r3blue','r3green']},
+  {id:'cc',    label:'Préparer et contrôler une commande click & collect', pz:['r4red']},
+  {id:'inv',   label:'Faire un inventaire et analyser la démarque', pz:['r4blue','r4green']},
+  {id:'anim',  label:'Composer un panier-lot et préparer une annonce micro', pz:['r5red','r5blue']},
+  {id:'voc',   label:'Utiliser le vocabulaire professionnel', pz:['boss']}
+];
+const PZ_IDS = ['r1red','r1blue','dangers','r2red','r2blue','r2green','r3red','r3blue','r3green','r4red','r4blue','r4green','r5red','r5blue','boss'];
+
+/* =========================================================
+   NIVEAUX (salles)
+   ========================================================= */
+const say = (...a) => dlg(...a);
+function danger(id, text){
+  if (S.dangers.includes(id)) return say('Danger déjà repéré.', 'info');
+  S.dangers.push(id); S.xp += 10; SFX.click(); log('danger ' + id);
+  say(`⚠ Danger repéré : ${text} (${S.dangers.length}/4)`, 'warn');
+  if (S.dangers.length === 4){ S.solved.dangers = {t: TOTAL_TIME - S.timeLeft, tries:0, hints:0}; giveFrag(0,'green',4); }
+  save(); renderHUD();
+}
+const ROOMS = [
+  {key:'r1', name:'NIVEAU 1 · LA RÉSERVE', art:art1, code:'4639', order:['green','red','black','blue'],
+    intro:'Le Glitch t’a enfermé(e) dans la RÉSERVE ! La porte est bloquée par un code à 4 chiffres. Fouille la pièce à la souris pour trouver les fragments.',
+    hints:['Commence par lire les documents : le porte-bloc au mur et la pochette plastique sur les colis.','Les colis sont filmés : un outil doit se cacher dans un tiroir.','L’affiche jaune parle de dangers. Et as-tu regardé dans la poubelle ?'],
+    hs:[
+      {id:'etagere', x:38,y:154,w:264,h:230, label:'Étagère', act:()=>openPuzzle('r1blue')},
+      {id:'d_carton', x:222,y:88,w:124,h:64, label:'Carton en hauteur', act:()=>danger('d_carton','un carton lourd (14 kg) posé en hauteur, qui dépasse de l’étagère')},
+      {id:'poster', x:356,y:56,w:108,h:118, label:'Affiche sécurité', act:()=>openDoc('poster1')},
+      {id:'clock', x:520,y:56,w:50,h:50, label:'Horloge', act:()=>say('Il est 7 h 58. Le magasin ouvre à 10 h… Dépêche-toi !','info')},
+      {id:'clip', x:628,y:108,w:52,h:76, label:'Porte-bloc', act:()=>openDoc('bc')},
+      {id:'palette', x:366,y:250,w:228,h:172, label:'Palette de colis', act:()=>{
+        if (S.usedItems.cutter) return openDoc('colis');
+        say('Les colis sont entourés de film plastique. Il te faut un outil pour le couper.' + (S.items.includes('cutter') ? ' (Clique sur l’objet dans ton inventaire, puis sur la palette.)' : ''), 'info'); },
+        use:{cutter:()=>{ S.usedItems.cutter = true; S.items = S.items.filter(i=>i!=='cutter'); SFX.item(); renderRoom(); say('Tu découpes le film plastique : les colis sont ouverts !','ok'); openDoc('colis'); }}},
+      {id:'pochette', x:452,y:338,w:48,h:36, label:'Pochette plastique', act:()=>openDoc('bl')},
+      {id:'fiche', x:628,y:232,w:78,h:22, label:'Fiche de réception', act:()=>openPuzzle('r1red')},
+      {id:'tiroir', x:622,y:264,w:76,h:36, label:'Tiroir de l’établi', act:()=>{
+        if (S.items.includes('cutter') || S.usedItems.cutter) return say('Le tiroir est vide.','info');
+        giveItem('cutter','Tu trouves un CUTTER ! Il est dans ton inventaire, en bas de l’écran.'); }},
+      {id:'poubelle', x:308,y:322,w:44,h:64, label:'Poubelle', act:()=>{ openDoc('trash1'); if (!S.frag['0.black']) giveFrag(0,'black',3,'nombre de manettes livrées ÷ 8'); }},
+      {id:'d_extinct', x:748,y:248,w:82,h:136, label:'Extincteur', act:()=>danger('d_extinct','l’extincteur est caché derrière des cartons')},
+      {id:'door', x:828,y:108,w:116,h:276, label:'Porte de sortie', act:()=>openLock(0)},
+      {id:'d_flaque', x:574,y:462,w:132,h:40, label:'Flaque', act:()=>danger('d_flaque','du soda renversé au sol : risque de glissade')},
+      {id:'d_transpal', x:320,y:430,w:206,h:76, label:'Transpalette', act:()=>danger('d_transpal','un transpalette laissé au milieu de l’allée')}
+    ]},
+  {key:'r2', name:'NIVEAU 2 · LE BUREAU', art:art2, code:'4752', order:['red','green','black','blue'],
+    intro:'Le BUREAU de Sarah, la manager. L’ordinateur est verrouillé par le Glitch… et le téléphone clignote.',
+    hints:['Le mot de passe de l’ordinateur se cache tout près du clavier.','Le calendrier et l’armoire donnent des informations utiles pour la commande.','Une horloge arrêtée, ce n’est jamais un hasard dans un escape game…'],
+    hs:[
+      {id:'door', x:18,y:116,w:108,h:268, label:'Porte de la boutique', act:()=>openLock(1)},
+      {id:'calendar', x:146,y:64,w:100,h:120, label:'Calendrier', act:()=>openDoc('calendar')},
+      {id:'clock', x:272,y:58,w:56,h:56, label:'Horloge', act:()=>{ openDoc('clock2'); if (!S.frag['1.black']) giveFrag(1,'black',5,'l’heure indiquée par l’horloge'); }},
+      {id:'board', x:588,y:54,w:324,h:164, label:'Tableau blanc', act:()=>openDoc('whiteboard')},
+      {id:'monitor', x:402,y:176,w:136,h:102, label:'Ordinateur', act:()=>openComputer()},
+      {id:'keyboard', x:400,y:278,w:136,h:18, label:'Clavier', act:()=>openDoc('postit2')},
+      {id:'phone', x:570,y:256,w:64,h:38, label:'Téléphone', act:()=>openPuzzle('r2green')},
+      {id:'mug', x:326,y:262,w:40,h:32, label:'Tasse', act:()=>say('« World’s Best Manager ». Le café est froid.','info')},
+      {id:'cabinet', x:714,y:230,w:128,h:154, label:'Armoire à dossiers', act:()=>openDoc('supplier')},
+      {id:'plant', x:856,y:246,w:64,h:138, label:'Plante', act:()=>say('Une plante verte. Elle aurait besoin d’eau, mais pas d’indice ici.','info')}
+    ]},
+  {key:'r3', name:'NIVEAU 3 · LA SURFACE DE VENTE', art:art3, code:'8491', order:['black','blue','red','green'],
+    intro:'La SURFACE DE VENTE. Le Glitch a saboté les étiquettes et effacé des prix ! La porte du Click & Collect est verrouillée.',
+    hints:['Les étiquettes jaunes sont cliquables une par une. La fiche de contrôle est à la caisse.','Les prix au kilo et au litre concernent le frigo et les bonbons. Le classeur bleu sur le comptoir contient la réglementation.','Un tiroir sous le comptoir cache un objet… qui révèle un message invisible sur une affiche.'],
+    hs:[
+      {id:'sign', x:34,y:16,w:276,h:60, label:'Enseigne', act:()=>say('L’enseigne du magasin clignote : N_W G#ME… Le Glitch est passé par là.','glitch')},
+      {id:'gondole', x:40,y:120,w:292,h:124, label:'Gondole des jeux', act:()=>say('Les produits sont bien rangés. Ce sont plutôt les étiquettes jaunes qui posent problème.','info')},
+      ...['L1','L2','L3','L6','L4','L5'].map(k => { const pos = {L1:[58,246],L2:[178,246],L3:[58,336],L6:[178,336],L4:[534,358],L5:[688,350]}[k];
+        return {id:k, x:pos[0], y:pos[1], w:k==='L4'?94:(k==='L5'?86:74), h:18, label:'Étiquette ' + k.slice(1), act:()=>{ S.seen['lab'+k] = true; openDoc('lab'+k); save(); }}; }),
+      {id:'frigo', x:354,y:114,w:152,h:272, label:'Frigo boissons', act:()=>openPuzzle('r3red')},
+      {id:'bonbons', x:518,y:236,w:128,h:120, label:'Présentoir bonbons', act:()=>openPuzzle('r3red')},
+      {id:'promo', x:658,y:148,w:146,h:200, label:'Tête de gondole promo', act:()=>say('Des jeux Kart Legends en promotion. Vérifie l’étiquette de la promo !','info')},
+      {id:'poster', x:518,y:28,w:128,h:96, label:'Affiche', act:()=>openDoc('poster3'),
+        use:{uv:()=>{ S.usedItems.uv = true; S.items = S.items.filter(i=>i!=='uv'); SFX.item(); renderRoom(); openDoc('poster3'); giveFrag(2,'black',8); }}},
+      {id:'register', x:842,y:232,w:70,h:40, label:'Caisse', act:()=>openPuzzle('r3blue')},
+      {id:'classeur', x:908,y:244,w:42,h:30, label:'Classeur bleu', act:()=>openPuzzle('r3green')},
+      {id:'tiroir', x:826,y:316,w:82,h:34, label:'Tiroir du comptoir', act:()=>{
+        if (S.items.includes('uv') || S.usedItems.uv) return say('Le tiroir est vide.','info');
+        giveItem('uv','Tu trouves une LAMPE UV ! Elle révèle les messages invisibles.'); }},
+      {id:'door', x:826,y:38,w:122,h:194, label:'Porte Click & Collect', act:()=>openLock(2)}
+    ]},
+  {key:'r4', name:'NIVEAU 4 · LE CLICK & COLLECT', art:art4, code:'5361', order:['blue','red','green','black'],
+    intro:'L’espace CLICK & COLLECT. Les commandes ont été mélangées… et des boîtes de Kart Legends ont disparu !',
+    hints:['Clique sur les 4 sacs, puis sur l’écran du comptoir pour voir les commandes.','Pour l’inventaire, compte le rayon de droite… mais tout le stock n’y est pas.','La fiche casse et la borne de démo expliquent une partie de l’écart. Et derrière le présentoir en carton ?'],
+    hs:[
+      {id:'sign', x:30,y:88,w:392,h:36, label:'Panneau', act:()=>say('« Commandez en ligne, retirez en magasin ! »','info')},
+      ...[101,102,103,104].map((n,i) => ({id:'bag'+n, x:[40,230,40,230][i], y:[140,140,266,266][i], w:182, h:116, label:'Sac #'+n, act:()=>{ S.seen['bag'+n] = true; openDoc('bag'+n); save(); }})),
+      {id:'door', x:446,y:62,w:120,h:174, label:'Porte zone animation', act:()=>openLock(3)},
+      {id:'terminal', x:468,y:196,w:96,h:66, label:'Écran des commandes', act:()=>openPuzzle('r4red')},
+      {id:'casse', x:572,y:242,w:46,h:22, label:'Fiche casse', act:()=>{ S.seen.casse = true; openDoc('casse4'); }},
+      {id:'registre', x:620,y:236,w:44,h:28, label:'Registre de démarque', act:()=>openPuzzle('r4green')},
+      {id:'clip', x:666,y:230,w:36,h:34, label:'Fiche d’inventaire', act:()=>openPuzzle('r4blue')},
+      {id:'basket', x:450,y:338,w:68,h:46, label:'Panier', act:()=>{ S.seen.basket = true; openDoc('basket4'); }},
+      {id:'demo', x:714,y:168,w:58,h:216, label:'Borne de démo', act:()=>openDoc('demo4')},
+      {id:'shelf', x:782,y:108,w:124,h:278, label:'Rayon Kart Legends', act:()=>openDoc('shelf4')},
+      {id:'plv', x:906,y:198,w:48,h:188, label:'Présentoir en carton', act:()=>{ openDoc('plv4'); if (!S.frag['3.black']) giveFrag(3,'black',1,'nombre de boîtes de la démarque inconnue'); }}
+    ]},
+  {key:'r5', name:'NIVEAU 5 · LA ZONE ANIMATION', art:art5, code:'375', order:['blue','red','black'],
+    intro:'La ZONE ANIMATION. Le Glitch s’est réfugié dans la borne d’arcade ! Trouve son code pour l’affronter.',
+    hints:['Commence par lire l’affiche du concours : elle sert pour le panier ET pour un fragment.','Le panier sur la table et le micro sur le podium cachent chacun une énigme.','Les enceintes cachent parfois des choses derrière elles…'],
+    hs:[
+      {id:'garland', x:0,y:10,w:960,h:40, label:'Guirlande', act:()=>say('La guirlande clignote en rythme. Jolie, mais inutile.','info')},
+      {id:'affiche', x:54,y:56,w:156,h:174, label:'Affiche du concours', act:()=>openDoc('affiche5')},
+      {id:'panier', x:116,y:240,w:160,h:64, label:'Panier-lot', act:()=>openPanier()},
+      {id:'micro', x:370,y:170,w:146,h:216, label:'Micro', act:()=>openPuzzle('r5blue')},
+      {id:'arcade', x:558,y:94,w:150,h:292, label:'Borne GLITCH.EXE', act:()=> S.cleared.includes(4) ? openBoss() : openLock(4)},
+      {id:'speaker', x:766,y:146,w:82,h:240, label:'Enceinte', act:()=>{ openDoc('speaker5'); if (!S.frag['4.black']) giveFrag(4,'black',5,'nombre de règles du jeu-concours'); }},
+      {id:'tree', x:832,y:120,w:128,h:266, label:'Sapin', act:()=>say('Le sapin de Noël du magasin. Les boules sont en plastique : rien à l’intérieur.','info')}
+    ]}
+];
+const NOTHING = ['Rien d’intéressant ici.','Tu fouilles… rien.','Juste de la poussière.','Non, rien de ce côté.','Le Glitch n’a rien caché ici.'];
+
+/* =========================================================
+   MOTEUR : sauvegarde, temps, fenêtres, scène
+   ========================================================= */
+let dlCap = null;
+const inFrame = (() => { try { return window.self !== window.top; } catch(e){ return true; } })();
+(async () => { try { if (window.claude && typeof window.claude.use === 'function') dlCap = await window.claude.use('downloads'); } catch(e){ dlCap = null; } })();
+
+function save(){ S.savedAt = new Date().toISOString(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch(e){} }
+function loadLocal(){ try { const t = localStorage.getItem(SAVE_KEY); return t ? JSON.parse(t) : null; } catch(e){ return null; } }
+function adopt(data){ const n = newState(); S = Object.assign(n, data); S.boss = Object.assign(n.boss, data.boss || {}); S.paused = false; }
+const playerNames = (st=S) => st.players.filter(Boolean).join(' & ') || 'Joueur';
+
+async function exportFile(name, text, mime){
+  if (dlCap){
+    try { await dlCap.save({filename:name, data:text}); say('Fichier enregistré : ' + name, 'ok'); return; }
+    catch(e){ const c = String((e && (e.code || e.message)) || ''); if (/declin|cancel|abort|denied/i.test(c)){ say('Enregistrement annulé.','info'); return; } }
+  }
+  if (!inFrame){
+    try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type:mime})); a.download = name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500); say('Fichier téléchargé : ' + name + '. Dépose-le sur le Digipad de la classe.', 'ok'); return; } catch(e){}
+  }
+  const w = modal('Copier la sauvegarde', `<p>Le téléchargement n’est pas possible ici. Copie ce texte et colle-le dans un fichier <b>${esc(name)}</b> ou directement sur le Digipad.</p><textarea id="cpTxt" rows="8" readonly style="width:100%">${esc(text)}</textarea><div class="row"><button class="btn go" id="cpBtn">COPIER</button><span id="cpMsg" class="muted"></span></div>`, {narrow:false});
+  w.querySelector('#cpBtn').onclick = async () => { try { await navigator.clipboard.writeText(text); w.querySelector('#cpMsg').textContent = 'Copié !'; } catch(e){ const t = w.querySelector('#cpTxt'); t.select(); w.querySelector('#cpMsg').textContent = 'Sélectionné : fais Ctrl + C.'; } };
+}
+function saveFileName(){ const n = (S.players.filter(Boolean).join('-') || 'joueur').replace(/[^\p{L}\p{N}-]+/gu,''); const d = new Date(); return `escape-newgame_${n}_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`; }
+function exportSave(){ save(); exportFile(saveFileName(), JSON.stringify(S, null, 1), 'application/json'); }
+
+/* ---------- temps ---------- */
+let ticker = null;
+function startTicker(){
+  clearInterval(ticker);
+  ticker = setInterval(() => {
+    if (!S.started || S.paused || S.finished || S.gameOver) return;
+    S.timeLeft--; S.realTime++;
+    if (S.timeLeft <= 0){ S.timeLeft = 0; gameOver(); }
+    renderTimer();
+    if (S.realTime % 10 === 0) save();
+  }, 1000);
+}
+function penalize(sec){
+  if (!sec) return;
+  S.timeLeft = Math.max(0, S.timeLeft - sec); renderTimer();
+  const t = $('#timer'); const p = document.createElement('span'); p.className = 'pen'; p.textContent = '−' + fmtMin(sec); t.appendChild(p); setTimeout(()=>p.remove(), 1500);
+  if (S.timeLeft <= 0) gameOver();
+}
+function renderTimer(){ const t = $('#timer'); if (!t) return; t.firstChild ? t.firstChild.nodeValue = fmtTime(S.timeLeft) : t.textContent = fmtTime(S.timeLeft); t.classList.toggle('low', S.timeLeft < 600); t.classList.toggle('paused', !!S.paused); }
+
+/* ---------- dialogue ---------- */
+let dlgT = null;
+function dlg(text, kind='info'){
+  const d = $('#dlg'); if (!d) return;
+  const who = {glitch:'GLITCH', info:'INFO', ok:'BRAVO', warn:'ATTENTION', sarah:'SARAH · MANAGER'}[kind] || 'INFO';
+  d.className = kind; d.hidden = false;
+  $('#dlgAv').innerHTML = kind === 'glitch' ? glitchSVG() : (kind === 'sarah' ? sarahSVG() : infoSVG());
+  $('#dlgWho').textContent = who; $('#dlgTxt').innerHTML = fmt(text);
+  clearTimeout(dlgT); dlgT = setTimeout(() => d.hidden = true, Math.max(4000, text.length * 55));
+}
+const TAUNTS = ['HAHA ! Faux ! Le temps file…','Bzzzt ! Mauvaise réponse, petit stagiaire !','Erreur 404 : bonne réponse introuvable !','Tu ne sortiras jamais d’ici !','Encore raté ! Mes précommandes vont disparaître…'];
+function taunt(){ dlg(TAUNTS[Math.floor(Math.random()*TAUNTS.length)] + (L().wrongCost ? ` (−${fmtMin(L().wrongCost)})` : ''), 'glitch'); }
+
+/* ---------- fenêtres ---------- */
+const stack = [];
+function modal(title, body, opt={}){
+  const ov = document.createElement('div'); ov.className = 'ov';
+  ov.innerHTML = `<div class="win ${opt.wide?'wide':''} ${opt.narrow?'narrow':''}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="win-bar"><h2>${fmt(title)}${opt.comp?`<br><span class="comp">Compétence : ${esc(opt.comp)}</span>`:''}</h2>${opt.noClose?'':'<button class="x" data-close>FERMER ✕</button>'}</div><div class="win-body">${body}</div></div>`;
+  $('#overlays').appendChild(ov); stack.push({ov, opt});
+  ov.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeModal(ov); });
+  setTimeout(() => { const f = ov.querySelector('input:not([readonly]),select,.btn.go'); if (f && !opt.noFocus) f.focus(); }, 30);
+  return ov;
+}
+function closeModal(ov){ const i = stack.findIndex(s => s.ov === (ov || (stack[stack.length-1]||{}).ov)); if (i < 0) return; const s = stack.splice(i,1)[0]; s.ov.remove(); if (s.opt.onClose) s.opt.onClose(); }
+function closeAll(){ while (stack.length) closeModal(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && stack.length && !stack[stack.length-1].opt.noClose) closeModal(); });
+
+function openDoc(id){ const d = DOCS[id]; S.seen['doc:' + id] = true; save(); SFX.click(); modal(d.title, d.html(), {noFocus:true}); }
+
+/* ---------- fragments et objets ---------- */
+function giveFrag(room, color, value, clue){
+  const k = room + '.' + color; if (S.frag[k]) return;
+  S.frag[k] = {v:value, clue:clue || null}; S.xp += clue ? 50 : 0; log('frag ' + k);
+  SFX.item(); save(); renderHUD();
+  const txt = clue ? `INDICE ${CH(color)} trouvé : ${CH(color)} = ${clue}. Il est noté dans ton carnet.` : `FRAGMENT ${CH(color)} trouvé : ${CH(color)} = <b>${value}</b> !`;
+  setTimeout(() => dlg(txt, 'ok'), 200);
+}
+function giveItem(id, text){ S.items.push(id); SFX.item(); log('item ' + id); save(); renderInv(); dlg(text, 'ok'); }
+
+/* ---------- énigmes génériques ---------- */
+function allFields(P){ const out = []; for (const it of P.fields || []){ if (it.only && !it.only.includes(S.level)) continue; if (it.type === 'table'){ for (const row of it.rows) for (const c of row) if (c && typeof c === 'object') out.push(c); } else if (it.kind) out.push(it); } return out; }
+function fieldHTML(pid, f, ro){
+  const id = `f_${pid}_${f.key}`, d = (S.drafts[pid] || {})[f.key], dis = ro ? 'disabled' : '';
+  if (f.req && !f.req()) return `<span class="locked-field" data-key="${f.key}">${f.reqMsg}</span>`;
+  if (f.kind === 'select') return `<select id="${id}" data-key="${f.key}" ${dis}><option value="">— choisir —</option>${f.options.map(o => `<option ${d===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  if (f.kind === 'num') return `<input id="${id}" data-key="${f.key}" class="num" inputmode="decimal" autocomplete="off" value="${esc(d ?? '')}" ${dis}>`;
+  if (f.kind === 'text') return `<input id="${id}" data-key="${f.key}" class="txt" autocomplete="off" value="${esc(d ?? '')}" ${dis} style="width:100%">`;
+  if (f.kind === 'radio') return `<div class="radios" data-key="${f.key}">${f.options.map((o,i) => `<label class="radio"><input type="radio" name="${id}" value="${i}" ${d===String(i)?'checked':''} ${dis}><span>${esc(o)}</span></label>`).join('')}</div>`;
+  if (f.kind === 'checks') return `<div class="checks" data-key="${f.key}">${f.options.map((o,i) => `<label class="radio"><input type="checkbox" value="${i}" ${(d||[]).includes(String(i))?'checked':''} ${dis}><span>${esc(o)}</span></label>`).join('')}</div>`;
+  return '';
+}
+function renderFields(pid, P, ro){
+  return (P.fields || []).filter(it => !it.only || it.only.includes(S.level)).map(it => {
+    if (it.type === 'html') return `<div class="pz-intro">${fmt(typeof it.html === 'function' ? it.html() : it.html)}</div>`;
+    if (it.type === 'table') return `<div class="tbl-wrap"><table class="pz-table"><thead><tr>${it.head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${it.rows.map(row => `<tr>${row.map(c => `<td>${(c && typeof c === 'object') ? fieldHTML(pid,c,ro) : c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    return `<div class="pz-field"><div class="pz-label">${it.label}</div>${fieldHTML(pid,it,ro)}</div>`;
+  }).join('');
+}
+function readVal(root, f){
+  const el = root.querySelector(`[data-key="${f.key}"]`); if (!el || el.classList.contains('locked-field')) return null;
+  if (f.kind === 'radio'){ const c = el.querySelector('input:checked'); return c ? c.value : ''; }
+  if (f.kind === 'checks') return [...el.querySelectorAll('input:checked')].map(i => i.value);
+  return el.value;
+}
+function isRight(f, v){
+  if (f.answer === undefined) return true;
+  if (f.req && !f.req()) return false;
+  if (f.kind === 'num'){ const t = String(v ?? '').replace(/\s|€/g,'').replace(',','.'); if (t === '') return !!f.blankZero && f.answer === 0; const n = Number(t); return isFinite(n) && Math.abs(n - f.answer) <= (f.tol ?? .001); }
+  if (f.kind === 'select') return v === f.answer;
+  if (f.kind === 'radio') return v === String(f.answer);
+  if (f.kind === 'checks') return (v || []).slice().sort().join(',') === f.answer.map(String).sort().join(',');
+  return true;
+}
+function hintBlock(pid, P){
+  const n = S.hints[pid] || 0;
+  return P.hints.slice(0, n).map((h,i) => `<div class="hint">💡 Indice ${i+1} : ${fmt(h)}</div>`).join('');
+}
+const costLabel = () => L().hintCost ? `−${fmtMin(L().hintCost)}` : 'gratuit';
+function footerHTML(pid, P){
+  if (S.solved[pid]) return `<div class="solved-banner">✔ Énigme résolue · fragment ${CH(P.color)} = ${P.value}${P.done ? '<br><span style="font-weight:400">' + P.done + '</span>' : ''}</div>`;
+  return `<div class="pz-hints" id="hb_${pid}">${hintBlock(pid,P)}</div><div class="pz-actions"><button class="btn warn" data-act="hint">💡 INDICE (${costLabel()})</button><span class="pz-msg" id="pm_${pid}" aria-live="polite"></span><button class="btn go" data-act="check">VALIDER ▶</button></div>`;
+}
+function bindFooter(ov, pid, P, check){
+  ov.addEventListener('click', e => {
+    const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'hint'){
+      const n = S.hints[pid] || 0;
+      if (n >= P.hints.length){ ov.querySelector('#pm_'+pid).textContent = 'Plus d’indice pour cette énigme.'; return; }
+      S.hints[pid] = n + 1; penalize(L().hintCost); log('hint ' + pid); save();
+      ov.querySelector('#hb_'+pid).innerHTML = hintBlock(pid, P);
+    }
+    if (a.dataset.act === 'check') check();
+  });
+}
+function wrongAnswer(pid, ov, msg){
+  S.tries[pid] = (S.tries[pid] || 0) + 1; log('wrong ' + pid); penalize(L().wrongCost); SFX.bad(); taunt(); save();
+  const m = ov.querySelector('#pm_'+pid); if (m){ m.className = 'pz-msg bad'; m.innerHTML = msg; }
+  const w = ov.querySelector('.win'); w.classList.remove('shake'); void w.offsetWidth; w.classList.add('shake');
+}
+function solve(pid){
+  const P = PUZ[pid];
+  const tries = S.tries[pid] || 0, hints = S.hints[pid] || 0, gain = Math.max(30, 100 - 20*hints - 10*tries);
+  S.solved[pid] = {t: TOTAL_TIME - S.timeLeft, tries, hints}; S.xp += gain; log('solve ' + pid);
+  SFX.ok(); closeAll();
+  S.frag[P.room + '.' + P.color] = {v:P.value, clue:null}; save(); renderHUD();
+  bigPopup(`<div class="big-title clear" style="font-size:22px">ÉNIGME RÉSOLUE</div><div style="font-family:var(--font-display);font-size:16px">FRAGMENT ${CH(P.color)} = ${P.value}</div><div class="muted">+${gain} XP · ${esc(P.done || '')}</div>`, 'CONTINUER');
+}
+function openPuzzle(pid){
+  const P = PUZ[pid]; if (P.custom) return openPanier();
+  SFX.click();
+  const ro = !!S.solved[pid];
+  const ov = modal(P.title, renderFields(pid, P, ro) + footerHTML(pid, P), {comp:P.comp});
+  const fields = allFields(P);
+  ov.addEventListener('input', e => { const k = e.target.closest('[data-key]'); if (!k) return; const f = fields.find(x => x.key === k.dataset.key); if (!f) return; (S.drafts[pid] = S.drafts[pid] || {})[f.key] = readVal(ov, f); save(); });
+  ov.querySelectorAll('select,input[type=radio],input[type=checkbox]').forEach(el => el.addEventListener('change', () => { const k = el.closest('[data-key]'); const f = fields.find(x => x.key === k.dataset.key); if (f){ (S.drafts[pid] = S.drafts[pid] || {})[f.key] = readVal(ov, f); save(); } }));
+  if (ro) return;
+  bindFooter(ov, pid, P, () => {
+    let bad = 0, empty = 0;
+    for (const f of fields){
+      if (f.answer === undefined) continue;
+      const v = readVal(ov, f), ok = isRight(f, v);
+      const el = ov.querySelector(`[data-key="${f.key}"]`);
+      if (el){ el.classList.remove('is-wrong','is-ok'); if (S.level === 'easy') el.classList.add(ok ? 'is-ok' : 'is-wrong'); }
+      if (!ok){ bad++; if (v === '' || v === null || (Array.isArray(v) && !v.length)) empty++; }
+    }
+    if (!bad) return solve(pid);
+    const lock = fields.some(f => f.req && !f.req());
+    let msg = S.level === 'hardcore' ? 'Ce n’est pas ça. Vérifie tout.' : `${bad} réponse${bad>1?'s':''} fausse${bad>1?'s':''} ou manquante${bad>1?'s':''}.`;
+    if (lock && S.level !== 'hardcore') msg += ' Certaines informations sont encore à trouver dans le décor 🔒.';
+    wrongAnswer(pid, ov, msg);
+  });
+}
+
+/* ---------- ordinateur du bureau ---------- */
+function openComputer(){
+  SFX.click();
+  if (!S.seen.login){
+    const ov = modal('Ordinateur · session verrouillée', `<div class="screen">GLITCH.EXE a verrouillé cette session.<br>Saisis le mot de passe pour continuer.</div><div class="row"><input class="txt" id="pwd" autocomplete="off" placeholder="Mot de passe"><button class="btn go" id="pwdOk">ENTRER ▶</button></div><div class="pz-msg" id="pm_login"></div>`, {narrow:true});
+    const go = () => {
+      const v = norm(ov.querySelector('#pwd').value);
+      if (v === 'seuil' || v === 'seuil minimum'){ S.seen.login = true; S.xp += 20; SFX.ok(); save(); closeModal(ov); renderRoom(); openComputer(); }
+      else { S.tries.login = (S.tries.login||0) + 1; penalize(L().wrongCost); SFX.bad(); taunt(); save(); ov.querySelector('#pm_login').className = 'pz-msg bad'; ov.querySelector('#pm_login').textContent = 'Mot de passe incorrect.'; }
+    };
+    ov.querySelector('#pwdOk').onclick = go; ov.querySelector('#pwd').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    return;
+  }
+  const ov = modal('Ordinateur · bureau', `<div class="screen">Session ouverte. Bienvenue, stagiaire.</div><div class="cards">
+    <button class="btn" data-o="mail" style="padding:20px;font-size:11px">📧 MAIL DE SARAH</button>
+    <button class="btn ${S.solved.r2red?'go':''}" data-o="r2red" style="padding:20px;font-size:11px">📊 FICHE DE STOCK ${S.solved.r2red?'✔':''}</button>
+    <button class="btn ${S.solved.r2blue?'go':''}" data-o="r2blue" style="padding:20px;font-size:11px" ${S.solved.r2red?'':'disabled'}>📝 BON DE COMMANDE ${S.solved.r2blue?'✔':(S.solved.r2red?'':'🔒')}</button></div>
+    ${S.solved.r2red?'':'<p class="muted">Le bon de commande se débloque quand la fiche de stock est juste.</p>'}`, {noFocus:true});
+  ov.addEventListener('click', e => { const b = e.target.closest('[data-o]'); if (!b || b.disabled) return; closeModal(ov); b.dataset.o === 'mail' ? openDoc('mail') : openPuzzle(b.dataset.o); });
+}
+
+/* ---------- panier-lot ---------- */
+function openPanier(){
+  const pid = 'r5red', P = PUZ[pid]; SFX.click();
+  const st = S.drafts[pid] = S.drafts[pid] || {};
+  const hard = S.level === 'hardcore', ro = !!S.solved[pid];
+  const body = `<div class="pz-intro">Compose le panier à gagner au jeu « Devine le prix du panier gamer ». Respecte les <b>règles de l’affiche du concours</b>.${hard ? ' En mode HARDCORE, les règles ne sont pas rappelées et tu dois calculer toi-même la valeur du panier.' : ''}</div>
+    <div class="lot-grid">${LOT.map(p => `<div class="lot-item"><div><b>${p.n}</b><small>${CATN[p.c]} · ${eur(p.p)}</small></div><div class="qty"><button class="btn sm" data-d="-1" data-id="${p.id}" ${ro?'disabled':''} aria-label="Retirer">−</button><span id="q_${p.id}">${st[p.id]||0}</span><button class="btn sm" data-d="1" data-id="${p.id}" ${ro?'disabled':''} aria-label="Ajouter">+</button></div></div>`).join('')}</div>
+    <div class="lot-side">${hard ? `<div class="pz-field"><div class="pz-label">Valeur totale du panier (en €)</div><input class="num" id="lotSum" inputmode="decimal" autocomplete="off" value="${esc(st._sum||'')}"></div>` : `<div class="lot-total">VALEUR DU PANIER : <span id="lotTotal"></span></div><ul class="rules" id="lotRules"></ul>`}</div>` + footerHTML(pid, P);
+  const ov = modal(P.title, body, {comp:P.comp, wide:true, noFocus:true});
+  const calc = () => {
+    let n = 0, tot = 0; const cats = {};
+    for (const p of LOT){ const q = st[p.id] || 0; n += q; tot += q * p.p; if (q) cats[p.c] = true; }
+    tot = Math.round(tot*100)/100;
+    const rules = [[tot >= 90 && tot <= 100,'Valeur entre 90 € et 100 €'],[!!cats.jeu,'Au moins 1 jeu vidéo'],[!!cats.acc,'Au moins 1 accessoire'],[!!cats.gourmand,'Au moins 1 produit gourmand'],[n > 0 && n <= 5,'5 articles maximum']];
+    return {n, tot, rules};
+  };
+  const refresh = () => { const c = calc(); if (!hard){ ov.querySelector('#lotTotal').textContent = eur(c.tot) + ` · ${c.n} article${c.n>1?'s':''}`; ov.querySelector('#lotRules').innerHTML = c.rules.map(([ok,t]) => `<li class="${ok?'ok':''}">${t}</li>`).join(''); } };
+  refresh();
+  ov.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const id = b.dataset.id; st[id] = Math.max(0, Math.min(5, (st[id]||0) + Number(b.dataset.d))); ov.querySelector('#q_'+id).textContent = st[id]; SFX.click(); save(); refresh(); });
+  const sumEl = ov.querySelector('#lotSum'); if (sumEl) sumEl.addEventListener('input', () => { st._sum = sumEl.value; save(); });
+  if (ro) return;
+  bindFooter(ov, pid, P, () => {
+    const c = calc(); const allOk = c.rules.every(r => r[0]);
+    let sumOk = true; if (hard){ const v = Number(String(sumEl.value).replace(/\s|€/g,'').replace(',','.')); sumOk = isFinite(v) && Math.abs(v - c.tot) <= .011; }
+    if (allOk && sumOk) return solve(pid);
+    wrongAnswer(pid, ov, hard ? (allOk ? 'Le panier est bon, mais la valeur calculée est fausse.' : 'Ce panier ne respecte pas toutes les règles du concours.') : 'Toutes les règles ne sont pas au vert.');
+  });
+}
+
+/* ---------- cadenas ---------- */
+function openLock(i){
+  const R = ROOMS[i]; SFX.click();
+  if (S.cleared.includes(i)){ if (i < 4) return goRoom(i+1); }
+  const body = `<div class="lock"><p>Saisis le code. Chaque case correspond à la couleur indiquée.</p><div class="slots-row">${R.order.map((c,k) => `<div class="digit">${CH(c)}<input id="lk${k}" maxlength="1" inputmode="numeric" autocomplete="off" aria-label="Chiffre ${COLORNAME[c]}"><small>${COLORNAME[c].toUpperCase()}</small></div>`).join('')}</div>
+    <button class="btn go" id="lkOk">DÉVERROUILLER 🔓</button><div class="pz-msg" id="pm_lock"></div></div>`;
+  const ov = modal(i === 4 ? 'Borne GLITCH.EXE · code d’accès' : 'Porte verrouillée · ' + R.name, body, {narrow:true});
+  bindDigits(ov, R.order.length, code => {
+    if (code === R.code){ closeModal(ov); clearRoom(i); }
+    else { S.tries['lock'+i] = (S.tries['lock'+i]||0) + 1; penalize(L().wrongCost); SFX.bad(); taunt(); save(); const m = ov.querySelector('#pm_lock'); m.className = 'pz-msg bad'; m.textContent = 'ACCÈS REFUSÉ.'; const w = ov.querySelector('.win'); w.classList.remove('shake'); void w.offsetWidth; w.classList.add('shake'); }
+  });
+}
+function bindDigits(ov, n, onCode){
+  const ins = [...Array(n)].map((_,k) => ov.querySelector('#lk'+k));
+  ins.forEach((inp,k) => {
+    inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/g,'').slice(-1); if (inp.value && k < n-1) ins[k+1].focus(); });
+    inp.addEventListener('keydown', e => { if (e.key === 'Backspace' && !inp.value && k > 0) ins[k-1].focus(); if (e.key === 'Enter') ov.querySelector('#lkOk').click(); });
+  });
+  ov.querySelector('#lkOk').onclick = () => onCode(ins.map(x => x.value).join(''));
+  setTimeout(() => ins[0].focus(), 40);
+}
+function clearRoom(i){
+  if (!S.cleared.includes(i)){ S.cleared.push(i); S.xp += 50; }
+  if (i < 4 && !S.unlocked.includes(i+1)) S.unlocked.push(i+1);
+  if (i === 4 && !S.unlocked.includes(5)) S.unlocked.push(5);
+  log('clear ' + i); SFX.door(); save(); renderHUD();
+  if (i === 4){ bigPopup(`<div class="big-title clear">LEVEL 5 CLEAR !</div><p>La borne s’allume… Le GLITCH apparaît à l’écran !</p>`, 'COMBATTRE LE BOSS ▶', () => openBoss()); return; }
+  bigPopup(`<div class="big-title clear">LEVEL ${i+1} CLEAR !</div><p>+50 XP · La porte s’ouvre…</p>`, 'NIVEAU SUIVANT ▶', () => goRoom(i+1));
+}
+function bigPopup(html, btn, then){
+  const d = document.createElement('div'); d.className = 'big';
+  d.innerHTML = `<div class="big-box">${html}<button class="btn primary" style="font-size:12px;padding:14px 18px">${btn}</button></div>`;
+  $('#overlays').appendChild(d); const b = d.querySelector('button'); b.focus();
+  b.onclick = () => { d.remove(); if (then) then(); };
+}
+
+/* ---------- boss ---------- */
+let bossT = null;
+function openBoss(){
+  if (S.boss.done) return openFinal();
+  const ov = modal('BOSS FINAL · GLITCH.EXE', `<div class="boss"><div class="boss-top"><div class="boss-sprite" id="bSpr">${glitchSVG(130)}</div><div class="boss-bars"><div class="lbl">GLITCH · <span id="bHpT"></span> PV</div><div class="hpbar"><div id="bHp"></div></div><div class="lbl">TES VIES</div><div class="hearts" id="bHearts"></div><div class="qtimer" id="bTim"></div></div></div>
+    <div class="boss-q" id="bQ"></div><div class="boss-opts" id="bOpts"></div><div class="boss-msg" id="bMsg">Trouve le mot qui correspond à la définition. Chaque bonne réponse retire 10 PV au Glitch. Si tu perds tes 3 vies, il se régénère !</div></div>`, {wide:true, noFocus:true, onClose:() => clearInterval(bossT)});
+  const draw = () => { ov.querySelector('#bHp').style.width = S.boss.hp + '%'; ov.querySelector('#bHpT').textContent = S.boss.hp; ov.querySelector('#bHearts').textContent = '♥'.repeat(S.boss.hearts) + '♡'.repeat(3 - S.boss.hearts); };
+  const next = () => {
+    clearInterval(bossT); draw();
+    if (S.boss.hp <= 0){ S.boss.done = true; S.solved.boss = {t: TOTAL_TIME - S.timeLeft, tries: S.tries.boss||0, hints:0}; S.xp += 200; log('boss'); save(); SFX.door(); closeModal(ov);
+      bigPopup(`<div class="big-title win">GLITCH VAINCU !</div><p>+200 XP · Le virus est effacé… La porte de sortie du magasin se déverrouille.</p>`, 'VERS LA SORTIE ▶', openFinal); return; }
+    if (!S.boss.queue || !S.boss.queue.length) S.boss.queue = shuffle(VOCAB.map((_,i) => i));
+    const qi = S.boss.queue.pop(); const [def, ans] = VOCAB[qi];
+    const opts = shuffle([ans, ...shuffle(VOCAB.filter(v => v[1] !== ans).map(v => v[1])).slice(0, L().bossOptions - 1)]);
+    ov.querySelector('#bQ').textContent = def;
+    ov.querySelector('#bOpts').innerHTML = opts.map(o => `<button class="btn" data-a="${esc(o)}">${esc(o)}</button>`).join('');
+    let left = L().bossTimer; const tim = ov.querySelector('#bTim');
+    if (left){ tim.textContent = '⏱ ' + left + ' s'; bossT = setInterval(() => { left--; tim.textContent = '⏱ ' + left + ' s'; if (left <= 0){ clearInterval(bossT); answer(null, ans); } }, 1000); } else tim.textContent = '';
+    ov.querySelector('#bOpts').onclick = e => { const b = e.target.closest('[data-a]'); if (b) answer(b.dataset.a, ans); };
+  };
+  const answer = (a, ans) => {
+    clearInterval(bossT); ov.querySelector('#bOpts').onclick = null;
+    const msg = ov.querySelector('#bMsg');
+    if (a === ans){ S.boss.hp = Math.max(0, S.boss.hp - 10); SFX.hit(); const sp = ov.querySelector('#bSpr'); sp.classList.remove('hit'); void sp.offsetWidth; sp.classList.add('hit'); msg.innerHTML = `<b style="color:var(--green)">TOUCHÉ !</b> ${esc(ans)}.`; }
+    else {
+      S.tries.boss = (S.tries.boss||0) + 1; S.boss.hearts--; SFX.bad(); penalize(L().wrongCost);
+      msg.innerHTML = `<b style="color:var(--red)">${a ? 'RATÉ' : 'TROP TARD'} !</b> La bonne réponse était : <b>${esc(ans)}</b>.`;
+      if (S.boss.hearts <= 0){ S.boss.hearts = 3; S.boss.hp = Math.min(100, S.boss.hp + 20); msg.innerHTML += ' Le Glitch se régénère (+20 PV) ! Tes vies reviennent.'; }
+    }
+    save(); draw(); setTimeout(next, 1300);
+  };
+  next();
+}
+
+/* ---------- sortie finale ---------- */
+function openFinal(){
+  const body = `<div class="lock"><div class="screen" style="width:100%">PORTE DE SORTIE DU MAGASIN<br>Code = les fragments ${CH('black')} de chaque niveau, dans l’ordre des niveaux 1 → 5.<br>Ton carnet t’aidera.</div>
+    <div class="slots-row">${[1,2,3,4,5].map((n,k) => `<div class="digit">${CH('black')}<input id="lk${k}" maxlength="1" inputmode="numeric" autocomplete="off" aria-label="Niveau ${n}"><small>NIV. ${n}</small></div>`).join('')}</div>
+    <div class="row"><button class="btn" id="fCar">📒 CARNET</button><button class="btn go" id="lkOk">OUVRIR LA PORTE 🔓</button></div><div class="pz-msg" id="pm_lock"></div></div>`;
+  const ov = modal('LA SORTIE', body, {narrow:true});
+  ov.querySelector('#fCar').onclick = openCarnet;
+  bindDigits(ov, 5, code => {
+    if (code === '35815'){ closeModal(ov); victory(); }
+    else { S.tries.final = (S.tries.final||0) + 1; penalize(L().wrongCost); SFX.bad(); taunt(); save(); const m = ov.querySelector('#pm_lock'); m.className = 'pz-msg bad'; m.textContent = 'ACCÈS REFUSÉ. Vérifie chaque fragment noir : certains sont à calculer !'; }
+  });
+}
+
+/* ---------- carnet ---------- */
+function openCarnet(){
+  SFX.click();
+  let h = '<p>Tous les fragments et documents trouvés sont notés ici.</p>';
+  ROOMS.forEach((R,i) => {
+    if (!S.unlocked.includes(i)) return;
+    h += `<div class="key"><h3>${R.name} ${S.cleared.includes(i) ? '✔' : ''}</h3><p>Ordre du code : ${R.order.map(c => CH(c)).join(' ')}</p><ul>`;
+    for (const c of R.order){ const f = S.frag[i + '.' + c]; h += `<li>${CH(c)} : ${f ? (f.clue ? `<i>${esc(f.clue)}</i> (à trouver)` : `<b>${f.v}</b>`) : '?'}</li>`; }
+    if (i === 0) h += `<li>Dangers repérés : ${S.dangers.length}/4</li>`;
+    h += '</ul></div>';
+  });
+  const docs = Object.keys(S.seen).filter(k => k.startsWith('doc:')).map(k => k.slice(4)).filter(k => DOCS[k]);
+  if (docs.length) h += `<div><b>Documents à relire :</b><div class="row" style="margin-top:8px">${docs.map(k => `<button class="btn sm" data-doc="${k}">${esc(DOCS[k].title)}</button>`).join('')}</div></div>`;
+  const ov = modal('Carnet de l’enquêteur', h, {noFocus:true});
+  ov.addEventListener('click', e => { const b = e.target.closest('[data-doc]'); if (b) openDoc(b.dataset.doc); });
+}
+
+/* ---------- indice de salle ---------- */
+function roomHint(){
+  const i = S.room, R = ROOMS[i], k = 'room' + i, n = S.hints[k] || 0;
+  if (i === 5) return dlg('Combats le Glitch dans la borne d’arcade, puis ouvre la sortie avec les fragments noirs de chaque niveau.','info');
+  if (n >= R.hints.length) return dlg('Tu as déjà tous les indices de ce niveau : ' + R.hints.join(' · '), 'info');
+  const ov = modal('Indice de fouille', `<p>Indice ${n+1}/${R.hints.length} pour ce niveau. Coût : <b>${costLabel()}</b>.</p>${n ? `<div class="pz-hints">${R.hints.slice(0,n).map((h,j) => `<div class="hint">${j+1}. ${h}</div>`).join('')}</div>` : ''}<div class="row"><button class="btn warn" id="rhOk">VOIR L’INDICE ${n+1}</button></div>`, {narrow:true});
+  ov.querySelector('#rhOk').onclick = () => { S.hints[k] = n + 1; penalize(L().hintCost); log('hint ' + k); save(); closeModal(ov); dlg('💡 ' + R.hints[n], 'warn'); };
+}
+
+/* ---------- rendu de la scène ---------- */
+function goRoom(i){ if (!S.unlocked.includes(i)) return; closeAll(); S.room = i; save(); renderAll(); if (i === 5) return openBoss(); const k = 'intro' + i; if (!S.seen[k]){ S.seen[k] = true; save(); setTimeout(() => dlg(ROOMS[i].intro, 'glitch'), 300); } }
+function renderRoom(){
+  const i = Math.min(S.room, 4), R = ROOMS[i];
+  const hs = R.hs.map((h,k) => `<rect class="hs" data-hs="${h.id}" x="${h.x}" y="${h.y}" width="${h.w}" height="${h.h}" style="animation-delay:${(k*0.37)%3}s"><title>${S.level === 'easy' ? esc(h.label) : ''}</title></rect>`).join('');
+  $('#scene').innerHTML = `<svg viewBox="0 0 960 540" shape-rendering="crispEdges" role="img" aria-label="${esc(R.name)}"><rect class="bgclick" x="0" y="0" width="960" height="540" fill="transparent"/>${R.art()}<g>${hs}</g></svg><div class="room-title">${R.name}</div>`;
+}
+function renderHUD(){
+  const p = $('#pips'); const labels = ['N1','N2','N3','N4','N5','BOSS'];
+  p.innerHTML = labels.map((l,i) => { const open = S.unlocked.includes(i), done = i < 5 ? S.cleared.includes(i) : S.boss.done; return `<button class="pip ${open?'open':''} ${done?'done':''} ${S.room===i?'here':''}" data-room="${i}" ${open?'':'disabled'} title="${i<5?ROOMS[i].name:'Boss final'}">${l}</button>`; }).join('');
+  $('#xp').textContent = 'XP ' + S.xp;
+  const b = $('#lvBadge'); b.className = 'badge ' + S.level; b.textContent = L().name;
+  const R = ROOMS[Math.min(S.room,4)];
+  $('#frags').innerHTML = (S.room < 5 ? R.order : []).map(c => { const f = S.frag[Math.min(S.room,4) + '.' + c]; return `<span class="fragchip">${CH(c)} ${f ? (f.clue ? '?' : f.v) : '·'}</span>`; }).join('') || '<span class="fragchip">—</span>';
+  renderInv(); renderTimer();
+}
+function renderInv(){
+  const sl = $('#slots'); const items = S.items.slice();
+  let h = items.map(id => `<button class="slot ${SEL===id?'sel':''}" data-item="${id}" title="${ITEMS[id].name}" aria-label="${ITEMS[id].name}">${ITEMS[id].svg}</button>`).join('');
+  for (let k = items.length; k < 4; k++) h += '<span class="slot empty"></span>';
+  sl.innerHTML = h; document.body.classList.toggle('using', !!SEL); if (typeof setItemCursor === 'function') setItemCursor();
+}
+function renderAll(){ document.body.className = 'lv-' + S.level; renderRoom(); renderHUD(); }
+
+/* clics dans la scène */
+$('#scene').addEventListener('click', e => {
+  if (S.gameOver || S.finished) return;
+  const t = e.target.closest('[data-hs]'); const R = ROOMS[Math.min(S.room,4)];
+  if (!t){ if (SEL){ SEL = null; renderInv(); } return dlg(NOTHING[Math.floor(Math.random()*NOTHING.length)], 'info'); }
+  const h = R.hs.find(x => x.id === t.dataset.hs); if (!h) return;
+  if (SEL){
+    const it = SEL; SEL = null; renderInv();
+    if (h.use && h.use[it]) return h.use[it]();
+    SFX.nope(); return dlg(`Utiliser ${ITEMS[it].name.toLowerCase()} ici ne sert à rien.`, 'info');
+  }
+  h.act();
+});
+const tip = $('#tip');
+$('#scene').addEventListener('mousemove', e => {
+  const t = e.target.closest('[data-hs]');
+  if (S.level !== 'easy' || !t){ tip.hidden = true; return; }
+  const h = ROOMS[Math.min(S.room,4)].hs.find(x => x.id === t.dataset.hs);
+  tip.textContent = SEL ? `Utiliser ${ITEMS[SEL].name} sur : ${h.label}` : h.label; tip.hidden = false;
+  tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14) + 'px';
+});
+$('#scene').addEventListener('mouseleave', () => tip.hidden = true);
+$('#slots').addEventListener('click', e => { const b = e.target.closest('[data-item]'); if (!b) return; SEL = SEL === b.dataset.item ? null : b.dataset.item; SFX.click(); renderInv(); if (SEL) dlg(`${ITEMS[SEL].name} en main. Clique sur l’endroit où l’utiliser.`, 'info'); });
+$('#pips').addEventListener('click', e => { const b = e.target.closest('[data-room]'); if (b && !b.disabled) goRoom(Number(b.dataset.room)); });
+$('#btnCarnet').onclick = openCarnet;
+$('#btnHint').onclick = roomHint;
+$('#btnSave').onclick = exportSave;
+$('#btnSound').onclick = () => { muted = !muted; $('#btnSound').textContent = muted ? '🔇' : '🔊'; };
+$('#btnTeacher').onclick = teacherGate;
+
+/* ---------- curseurs pixel art ---------- */
+const CUR_MAPS = {
+  arrow:{hot:[1,1], pal:{K:'#07060f',W:'#f2efff',C:'#3de1ff'}, map:[
+    'K...............','KK..............','KWK.............','KWWK............','KWWWK...........','KWWWWK..........','KWWWWWK.........','KWWWWWWK........',
+    'KWWWWWWWK.......','KWWWWWWWWK......','KWWWWWKKKKK.....','KWWKWWK.........','KWK.KWWK........','KK..KCCK........','K....KCCK.......','.....KKK........']},
+  hand:{hot:[13,1], pal:{K:'#07060f',Y:'#ffd23d',M:'#ff3d7f',W:'#fff6c9'}, map:[
+    '......KK........','.....KWYK.......','.....KWYK.......','.....KWYK.......','.....KWYKKK.....','.....KWYKYYKKK..','..KK.KWYKYYKYYK.','.KYYKKYYYYYYYYYK',
+    '.KYYYKYYYYYYYYYK','..KYYYYYYYYYYYYK','...KYYYYYYYYYYYK','....KYYYYYYYYYK.','....KYYYYYYYYK..','.....KYYYYYYYK..','.....KMMMMMMMK..','.....KKKKKKKKK..']},
+  loupe:{hot:[12,10], pal:{K:'#07060f',C:'rgba(61,225,255,.35)',W:'#ffffff',Y:'#ff3d7f',G:'#ffd23d'}, map:[
+    '...KKKKK........','..KCCCCCK.......','.KCWWCCCCK......','KCWWCCCCCCK.....','KCWCCCCCCCK.....','KCCCCCCCCCK.....','KCCCCCCCCCK.....','KCCCCCCCCCK.....',
+    '.KCCCCCCCK......','..KCCCCCKK......','...KKKKKKGK.....','.........KYYK...','..........KYYK..','...........KYYK.','............KYK.','.............K..']},
+  cutter:{hot:[2,2], pal:{K:'#07060f',W:'#ffffff',S:'#cfd6ff',Y:'#ffd23d'}, map:[
+    '................','.KK.............','.KWK............','..KWK...........','...KSK..........','....KSKK........','.....KYYK.......','......KYYK......',
+    '.......KYYK.....','........KYYK....','.........KYYK...','..........KYYK..','...........KYYK.','............KKK.']},
+  uv:{hot:[2,2], pal:{K:'#07060f',P:'rgba(176,107,255,.85)',V:'#7d86a8',G:'#4c5375',M:'#ff3d7f'}, map:[
+    '.P..............','PPP.............','.PPP............','..PPK...........','...KVVK.........','....KVVK........','.....KGGK.......','......KGMK......',
+    '.......KGGK.....','........KGGK....','.........KGGK...','..........KGGK..','...........KGK..','............K...']}
+};
+const CUR = {};
+function makeCursor(def, scale=2){
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 16*scale; const g = c.getContext('2d');
+    def.map.forEach((row,y) => [...row].forEach((ch,x) => { const col = def.pal[ch]; if (col){ g.fillStyle = col; g.fillRect(x*scale, y*scale, scale, scale); } }));
+    return `url(${c.toDataURL('image/png')}) ${def.hot[0]*scale} ${def.hot[1]*scale}`;
+  } catch(e){ return null; }
+}
+(function initCursors(){
+  for (const k in CUR_MAPS) CUR[k] = makeCursor(CUR_MAPS[k]);
+  if (!CUR.arrow) return;
+  const st = document.createElement('style');
+  st.textContent = `
+    body{cursor:${CUR.arrow}, default}
+    button,.btn,.slot,.mode,label.radio,.radio,select,.pip.open,.x,[data-close]{cursor:${CUR.hand}, pointer}
+    .btn[disabled],.pip:not(.open),.slot.empty{cursor:${CUR.arrow}, not-allowed}
+    input.txt,input.num,textarea,#lk0,.digit input{cursor:text}
+    #scene svg{cursor:${CUR.loupe}, crosshair}
+    body.lv-easy .hs, body.lv-normal .hs{cursor:${CUR.hand}, pointer}
+    body.lv-hardcore .hs{cursor:${CUR.loupe}, crosshair}
+    body.using #scene svg, body.using .hs{cursor:var(--cur-item), copy}`;
+  document.head.appendChild(st);
+})();
+function setItemCursor(){ if (SEL && CUR[SEL]) document.body.style.setProperty('--cur-item', CUR[SEL]); }
+
+/* petite explosion de pixels au clic dans le décor */
+$('#scene').addEventListener('pointerdown', e => {
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const hit = !!e.target.closest('[data-hs]');
+  const s = document.createElement('span'); s.className = 'spark' + (hit ? ' hit' : '');
+  s.style.left = e.clientX + 'px'; s.style.top = e.clientY + 'px'; s.innerHTML = '<i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>';
+  document.body.appendChild(s); setTimeout(() => s.remove(), 450);
+});
+
+/* =========================================================
+   FIN DE PARTIE, BILAN, ESPACE PROFESSEUR, ÉCRAN TITRE
+   ========================================================= */
+function puzzleCount(st=S){ return PZ_IDS.filter(p => st.solved && st.solved[p]).length; }
+function sumObj(o){ return Object.values(o || {}).reduce((a,b) => a + (Number(b)||0), 0); }
+function statsHTML(){
+  const used = TOTAL_TIME - S.timeLeft;
+  return `<div class="stats">
+    <div class="stat"><div class="v">${puzzleCount()}/${PZ_IDS.length}</div><div class="k">énigmes résolues</div></div>
+    <div class="stat"><div class="v">${S.cleared.length}/5</div><div class="k">niveaux terminés</div></div>
+    <div class="stat"><div class="v">${S.xp}</div><div class="k">points d’XP</div></div>
+    <div class="stat"><div class="v">${fmtTime(S.timeLeft)}</div><div class="k">temps restant</div></div>
+    <div class="stat"><div class="v">${sumObj(S.tries)}</div><div class="k">erreurs</div></div>
+    <div class="stat"><div class="v">${sumObj(S.hints)}</div><div class="k">indices utilisés</div></div></div>`;
+}
+function selfEvalHTML(){
+  return `<div class="selfeval"><p><b>Mon bilan de compétences</b> : pour chaque compétence, coche ce qui te correspond.</p><div class="tbl-wrap"><table><tr><th>Compétence</th><th>Je découvre</th><th>Je fais avec aide</th><th>Je fais seul(e)</th></tr>
+    ${COMPS.map(c => `<tr><td>${c.label}</td>${['decouvre','aide','seul'].map(v => `<td class="c"><input type="radio" name="se_${c.id}" value="${v}" ${S.selfEval[c.id]===v?'checked':''} aria-label="${v}"></td>`).join('')}</tr>`).join('')}</table></div></div>`;
+}
+function bindSelfEval(root){ root.querySelectorAll('.selfeval input').forEach(inp => inp.addEventListener('change', () => { S.selfEval[inp.name.slice(3)] = inp.value; save(); })); }
+
+function gameOver(){
+  if (S.gameOver || S.finished) return;
+  S.gameOver = true; log('gameover'); save(); closeAll(); SFX.bad();
+  const d = document.createElement('div'); d.className = 'big';
+  d.innerHTML = `<div class="big-box"><div class="big-title over">GAME OVER</div><p>10 h : le magasin ouvre… Le Glitch a effacé les précommandes de Noël !</p>${statsHTML()}${selfEvalHTML()}
+    <p><b>Enregistre ta sauvegarde</b> et dépose-la sur le Digipad de la classe.</p><div class="row" style="justify-content:center"><button class="btn go" data-s>💾 SAUVEGARDER MON TRAVAIL</button><button class="btn" data-t>⚙ PROFESSEUR</button></div></div>`;
+  $('#overlays').appendChild(d); bindSelfEval(d);
+  d.querySelector('[data-s]').onclick = exportSave;
+  d.querySelector('[data-t]').onclick = teacherGate;
+}
+function victory(){
+  S.finished = true; const bonus = Math.floor(S.timeLeft/60) * 5; S.xp += bonus; log('victory'); save(); closeAll(); SFX.door(); renderHUD();
+  const d = document.createElement('div'); d.className = 'big';
+  d.innerHTML = `<div class="big-box"><div class="big-title win">VICTOIRE !</div><p>La porte s’ouvre à ${fmtTime(TOTAL_TIME - S.timeLeft).slice(2)} de jeu. Le magasin New Game est sauvé : les clients peuvent retirer leurs précommandes. Bravo ${esc(playerNames())} !</p>
+    <p class="muted">Bonus de temps : +${bonus} XP</p>${statsHTML()}${selfEvalHTML()}
+    <p><b>Dernière mission :</b> enregistre ta sauvegarde et dépose-la sur le Digipad de la classe.</p><div class="row" style="justify-content:center"><button class="btn go" data-s>💾 SAUVEGARDER MON TRAVAIL</button></div></div>`;
+  $('#overlays').appendChild(d); bindSelfEval(d);
+  d.querySelector('[data-s]').onclick = exportSave;
+}
+
+/* ---------- espace professeur ---------- */
+let teacherOK = false;
+function teacherGate(){
+  if (teacherOK) return openTeacher();
+  const ov = modal('Espace professeur', `<p>Saisis le code professeur.</p><div class="row"><input class="txt" id="tcode" type="password" autocomplete="off"><button class="btn go" id="tOk">OK</button></div><div class="pz-msg bad" id="tMsg"></div>`, {narrow:true});
+  const go = () => { if (ov.querySelector('#tcode').value.trim().toUpperCase() === TEACHER_CODE){ teacherOK = true; closeModal(ov); openTeacher(); } else ov.querySelector('#tMsg').textContent = 'Code incorrect.'; };
+  ov.querySelector('#tOk').onclick = go; ov.querySelector('#tcode').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+}
+let dashRows = [];
+function keyHTML(){
+  return `<div class="key"><h3>Codes des portes</h3><ul>
+    <li>Niveau 1 · Réserve : <b>4639</b> (${CH('green')} 4 dangers · ${CH('red')} 6 jeux abîmés · ${CH('black')} 24 ÷ 8 = 3 · ${CH('blue')} 9)</li>
+    <li>Niveau 2 · Bureau : <b>4752</b> (${CH('red')} 4 produits à commander · ${CH('green')} 7 · ${CH('black')} horloge 5 h · ${CH('blue')} 2). Mot de passe : <b>SEUIL</b></li>
+    <li>Niveau 3 · Vente : <b>8491</b> (${CH('black')} 8 sous UV · ${CH('blue')} 4 étiquettes non conformes · ${CH('red')} 9 · ${CH('green')} 1)</li>
+    <li>Niveau 4 · Click & Collect : <b>5361</b> (${CH('blue')} écart 5 · ${CH('red')} 3 commandes fausses · ${CH('green')} 6 · ${CH('black')} 1 démarque inconnue)</li>
+    <li>Niveau 5 · Borne : <b>375</b> (${CH('blue')} 3 · ${CH('red')} 7 · ${CH('black')} 5 règles)</li>
+    <li>Sortie finale : <b>35815</b> (les ${CH('black')} des niveaux 1 à 5)</li></ul></div>
+  <div class="key"><h3>Niveau 1 · Réserve</h3><ul><li>Cutter dans le tiroir de l’établi → à utiliser sur la palette.</li><li>Réception : MAN-PX conforme · CAS-SW 2 manquants · JEU-SK6 6 abîmés · CAR-50 conforme · VOL-RM non commandé, refusé. Réserve précise = réponse 2.</li><li>Rangement : console et pack d’eau en bas · manettes au milieu · guirlandes en haut · cartes cadeaux dans l’armoire · lot A devant · FIFO.</li><li>Dangers : carton de 14 kg en hauteur, transpalette dans l’allée, extincteur masqué, flaque de soda.</li></ul></div>
+  <div class="key"><h3>Niveau 2 · Bureau</h3><ul><li>Fiche de stock : 12 · 0 · 33 · 7 · 0 · 5.</li><li>Bon de commande : mêmes quantités, mardi 22/12, livraison magasin.</li><li>Appel : réponses 2 · 1 · 3 · 2 · 3.</li></ul></div>
+  <div class="key"><h3>Niveau 3 · Surface de vente</h3><ul><li>Prix : 9,96 €/kg · 14,75 €/kg · 3,70 €/L · 1,60 €/L.</li><li>Étiquettes : 1 conforme · 2 prix différent (79,99 / 69,99) · 3 prix manquant · 4 prix au kg manquant · 5 réduction fausse (−20 %, pas −30 %) · 6 conforme.</li><li>Mentions obligatoires : désignation, prix TTC, prix au kg/L, prix de référence en cas de réduction.</li><li>Lampe UV dans le tiroir du comptoir → à utiliser sur l’affiche.</li></ul></div>
+  <div class="key"><h3>Niveau 4 · Click & Collect</h3><ul><li>Sacs : #101 conforme · #102 article manquant · #103 mauvais article · #104 article en trop · numéro de commande + pièce d’identité.</li><li>Inventaire : 33 en rayon + 2 dans le panier = 35 · écart 5 = 3 casse + 1 démo + 1 inexpliqué.</li><li>Démarque : connue · inconnue · connue · inconnue · connue · inconnue.</li></ul></div>
+  <div class="key"><h3>Niveau 5 · Animation</h3><ul><li>Panier valide, par exemple : Star Knights VI + câble HDMI + figurine + Pixel Gummies = 90,46 €.</li><li>Annonce : réponses 2 · 3 · 1 · 30 secondes.</li><li>Boss : 15 définitions de vocabulaire, 10 bonnes réponses pour gagner.</li></ul></div>`;
+}
+function openTeacher(tab='ctrl'){
+  closeAll();
+  const tabs = [['ctrl','CONTRÔLE'],['key','CORRIGÉ'],['dash','TABLEAU DE BORD']];
+  const ctrl = S.started ? `<div class="key"><h3>Partie en cours : ${esc(playerNames())} · ${L().name}</h3><p>Temps restant : <b>${fmtTime(S.timeLeft)}</b> · ${puzzleCount()}/${PZ_IDS.length} énigmes · ${S.cleared.length}/5 niveaux</p></div>
+    <div class="row"><button class="btn" data-c="pause">${S.paused ? '▶ REPRENDRE LE CHRONO' : '⏸ METTRE EN PAUSE'}</button><button class="btn" data-c="plus">+10 MIN</button><button class="btn" data-c="moins">−10 MIN</button></div>
+    <div class="row"><span>Changer la difficulté :</span>${Object.keys(LEVELS).map(k => `<button class="btn sm" data-lv="${k}">${LEVELS[k].name}</button>`).join('')}</div>
+    <div class="row"><span>Débloquer et aller au niveau :</span>${[0,1,2,3,4,5].map(i => `<button class="btn sm" data-go="${i}">${i<5?'N'+(i+1):'BOSS'}</button>`).join('')}</div>
+    <div class="row"><button class="btn primary" data-c="reset">EFFACER LA PARTIE DE CET ORDINATEUR</button></div>` : '<p>Aucune partie en cours sur cet ordinateur.</p>';
+  const dash = `<p>Charge les fichiers de sauvegarde déposés par les élèves (plusieurs à la fois) pour voir leurs résultats.</p><div class="row"><button class="btn go" id="dLoad">📂 CHARGER DES SAUVEGARDES</button><input type="file" id="dFiles" accept=".json,application/json" multiple hidden><button class="btn" id="dCsv" ${dashRows.length?'':'disabled'}>⬇ EXPORT EXCEL (CSV)</button><button class="btn" id="dClear" ${dashRows.length?'':'disabled'}>VIDER</button></div><div class="dash" id="dTable">${dashTable()}</div>`;
+  const body = `<div class="tabs" role="tablist">${tabs.map(([k,l]) => `<button class="btn" role="tab" aria-selected="${tab===k}" data-tab="${k}">${l}</button>`).join('')}</div>` + (tab === 'ctrl' ? ctrl : tab === 'key' ? keyHTML() : dash) + `<p class="muted">Code professeur actuel : modifiable en haut du code du jeu (constante TEACHER_CODE).</p>`;
+  const ov = modal('Espace professeur', body, {wide:true, noFocus:true});
+  ov.addEventListener('click', e => {
+    const t = e.target.closest('[data-tab]'); if (t) return openTeacher(t.dataset.tab);
+    const c = e.target.closest('[data-c]');
+    if (c){ const a = c.dataset.c;
+      if (a === 'pause') S.paused = !S.paused;
+      if (a === 'plus'){ S.timeLeft += 600; if (S.gameOver && S.timeLeft > 0){ S.gameOver = false; document.querySelectorAll('.big').forEach(x => x.remove()); } }
+      if (a === 'moins') S.timeLeft = Math.max(1, S.timeLeft - 600);
+      if (a === 'reset'){ try { localStorage.removeItem(SAVE_KEY); } catch(err){} location.reload(); return; }
+      save(); renderTimer(); return openTeacher('ctrl'); }
+    const lv = e.target.closest('[data-lv]'); if (lv){ S.level = lv.dataset.lv; save(); renderAll(); return openTeacher('ctrl'); }
+    const g = e.target.closest('[data-go]'); if (g){ const i = Number(g.dataset.go); for (let k = 0; k <= i; k++) if (!S.unlocked.includes(k)) S.unlocked.push(k); save(); closeAll(); document.querySelectorAll('.big').forEach(x => x.remove()); S.gameOver = false; goRoom(i); }
+  });
+  if (tab === 'dash'){
+    const fi = ov.querySelector('#dFiles');
+    ov.querySelector('#dLoad').onclick = () => fi.click();
+    fi.onchange = async () => { for (const f of fi.files){ try { const d = JSON.parse(await f.text()); if (d.app === 'newgame-escape') dashRows.push(d); } catch(err){} } openTeacher('dash'); };
+    ov.querySelector('#dCsv').onclick = () => exportFile('escape-newgame_resultats.csv', '﻿' + dashCSV(), 'text/csv');
+    ov.querySelector('#dClear').onclick = () => { dashRows = []; openTeacher('dash'); };
+  }
+}
+const SE = {decouvre:'Je découvre', aide:'Avec aide', seul:'Seul(e)'};
+function compStatus(d, c){ const ok = c.pz.filter(p => d.solved && d.solved[p]).length; return `${ok}/${c.pz.length}`; }
+function dashData(){
+  return dashRows.map(d => ({
+    'Élèves': (d.players||[]).filter(Boolean).join(' & '), 'Classe': d.classe || '', 'Mode': (LEVELS[d.level]||{}).name || d.level,
+    'Niveaux': (d.cleared||[]).length + '/5', 'Énigmes': PZ_IDS.filter(p => d.solved && d.solved[p]).length + '/' + PZ_IDS.length,
+    'Boss': d.boss && d.boss.done ? 'vaincu' : '—', 'Terminé': d.finished ? 'oui' : (d.gameOver ? 'temps écoulé' : 'non'),
+    'Temps restant': fmtTime(d.timeLeft||0), 'XP': d.xp||0, 'Erreurs': sumObj(d.tries), 'Indices': sumObj(d.hints),
+    ...Object.fromEntries(COMPS.map(c => [c.label, compStatus(d,c) + (d.selfEval && d.selfEval[c.id] ? ' · ' + SE[d.selfEval[c.id]] : '')])),
+    'Sauvegardé le': d.savedAt ? new Date(d.savedAt).toLocaleString('fr-FR') : ''
+  }));
+}
+function dashTable(){
+  const rows = dashData(); if (!rows.length) return '<p class="muted">Aucune sauvegarde chargée.</p>';
+  const cols = Object.keys(rows[0]);
+  return `<table><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr>${rows.map(r => `<tr>${cols.map(c => `<td>${esc(r[c])}</td>`).join('')}</tr>`).join('')}</table><p class="muted">Compétences : énigmes réussies / énigmes de la compétence · auto-évaluation de l’élève.</p>`;
+}
+function dashCSV(){ const rows = dashData(); if (!rows.length) return ''; const cols = Object.keys(rows[0]); const q = v => '"' + String(v).replace(/"/g,'""') + '"'; return [cols.map(q).join(';'), ...rows.map(r => cols.map(c => q(r[c])).join(';'))].join('\r\n'); }
+
+/* ---------- écran titre ---------- */
+let chosen = 'easy';
+function renderModes(){
+  $('#modes').innerHTML = Object.entries(LEVELS).map(([k,v]) => `<button class="mode ${k}" data-mode="${k}" aria-pressed="${chosen===k}"><span class="mname">${v.name}</span><span class="mtag">${v.tag}</span><span class="bars"><i></i><i></i><i></i></span><span class="mdesc">${v.desc}</span></button>`).join('');
+}
+$('#modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (!b) return; chosen = b.dataset.mode; SFX.click(); renderModes(); });
+function show(id){ for (const s of ['title','story','game']) $('#'+s).hidden = s !== id; }
+const STORY = `<p>Tu es en stage chez <b style="color:#ff3d7f">New Game</b>, le magasin de jeux vidéo. C’est le dernier samedi avant Noël : à 10 h, des dizaines de clients viendront retirer leurs précommandes.</p>
+<p>Mais cette nuit, un virus a infecté le système du magasin : le <b style="color:#ff3d7f">GLITCH</b>. Il a mélangé les livraisons, saboté les étiquettes, bloqué les commandes… et verrouillé toutes les portes.</p>
+<p>Tu es enfermé(e) dans la réserve. Tu as <b style="color:#ffd23d">2 heures</b> pour traverser les 5 niveaux du magasin, vaincre le Glitch et ouvrir la porte de sortie avant l’ouverture.</p>
+<p>Fouille chaque pièce avec ta souris. Ouvre les documents, résous les énigmes et récupère les fragments de code [[red]] [[blue]] [[green]] [[black]] pour ouvrir les portes.</p>
+<p>Si le chrono tombe à zéro : <b style="color:#ff3d7f">GAME OVER</b>.</p>`;
+$('#btnStart').onclick = () => {
+  const p1 = $('#p1').value.trim();
+  if (!p1){ $('#p1').focus(); $('#p1').style.outline = '3px solid #ff4757'; return; }
+  const old = loadLocal();
+  const start = () => {
+    S = newState(); S.players = [p1, $('#p2').value.trim()]; S.classe = $('#cl').value.trim(); S.level = chosen;
+    SFX.ok(); $('#storyText').innerHTML = fmt(STORY); show('story'); $('#btnGo').focus();
+  };
+  if (old && old.started && !old.finished && !old.gameOver){
+    const ov = modal('Attention', `<p>Une partie est en cours sur cet ordinateur (<b>${esc(playerNames(old))}</b>). Si tu commences une nouvelle partie, elle sera effacée de cet ordinateur.</p><p>Pense à l’enregistrer d’abord avec le bouton « Continuer », puis « Sauvegarder ».</p><div class="row"><button class="btn" data-close>ANNULER</button><button class="btn primary" id="ovw">NOUVELLE PARTIE</button></div>`, {narrow:true});
+    ov.querySelector('#ovw').onclick = () => { closeModal(ov); start(); };
+  } else start();
+};
+$('#btnGo').onclick = () => { S.started = true; S.startedAt = new Date().toISOString(); log('start'); save(); enterGame(); };
+function enterGame(){ show('game'); renderAll(); startTicker(); if (S.finished) return victory(); if (S.gameOver){ S.gameOver = false; return gameOver(); } goRoom(S.room); }
+$('#btnResume').onclick = () => { const d = loadLocal(); if (!d) return; adopt(d); enterGame(); };
+$('#btnLoad').onclick = () => $('#fileLoad').click();
+$('#fileLoad').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { const d = JSON.parse(await f.text()); if (d.app !== 'newgame-escape') throw 0; adopt(d); S.started = true; save(); enterGame(); }
+  catch(err){ modal('Fichier illisible', '<p>Ce fichier n’est pas une sauvegarde de l’escape game New Game.</p>', {narrow:true}); }
+  e.target.value = '';
+};
+$('#btnTeacherT').onclick = teacherGate;
+
+/* ---------- démarrage ---------- */
+(function init(){
+  renderModes();
+  const d = loadLocal();
+  if (d && d.started){ $('#resumeCard').hidden = false; $('#resumeInfo').textContent = `${playerNames(d)} · ${(LEVELS[d.level]||LEVELS.easy).name} · niveau ${Math.min((d.room||0)+1,5)} · ${fmtTime(d.timeLeft)} restant${d.finished ? ' · terminée' : ''}`; }
+})();
+
+</script>
+</body>
+</html>
